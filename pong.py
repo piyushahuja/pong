@@ -22,6 +22,11 @@ D = 80 * 80
 RENDER = False
 CHECKPOINT = Path("pong_policy.pt")
 
+# Pick up an interrupted run from CHECKPOINT instead of starting over.
+# Set False to ignore an existing checkpoint and train from scratch;
+# either way the file is overwritten as training proceeds.
+RESUME = True
+
 
 # ------------------------------------------------------------
 # Device
@@ -242,6 +247,54 @@ rewards = []
 episode_number = 0
 reward_sum = 0.0
 running_reward = None
+
+
+# ------------------------------------------------------------
+# Resume from a checkpoint
+#
+# Checkpoints are written every 100 episodes, and 100 is a
+# multiple of BATCH_SIZE, so a save always lands just after
+# step 15 called optimizer.zero_grad(). No partially
+# accumulated gradient is ever in flight at save time, which
+# is what makes resuming exact rather than approximate:
+# weights, optimizer state, episode count and running reward
+# are the whole picture.
+#
+# Only the live CHECKPOINT path is picked up. To continue from
+# an archived policy, copy it into place first:
+#
+#     cp checkpoints/pong-ep99400-reward+6.96.pt pong_policy.pt
+# ------------------------------------------------------------
+
+if RESUME and CHECKPOINT.exists():
+
+    checkpoint = torch.load(
+        CHECKPOINT,
+        map_location=device,
+        weights_only=False,
+    )
+
+    policy.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+    episode_number = checkpoint["episode"]
+    running_reward = checkpoint["running_reward"]
+
+    print(
+        f"Resuming from {CHECKPOINT} at episode {episode_number}"
+        + (
+            f" | running reward {running_reward:.3f}"
+            if running_reward is not None
+            else ""
+        )
+    )
+
+else:
+
+    if RESUME:
+        print(f"No checkpoint at {CHECKPOINT}; starting from scratch.")
+    else:
+        print("RESUME is False; starting from scratch.")
 
 
 # Important:

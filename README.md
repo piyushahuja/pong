@@ -92,7 +92,7 @@ agent play without training first.
 | File | Episodes | Running reward | Tracked? |
 |---|---|---|---|
 | `checkpoints/pong-ep99400-reward+6.96.pt` | 99,400 | +6.96 — beats the built-in opponent | yes |
-| `pong_policy.pt` | whatever your run is at | — | no, gitignored |
+| `pong_policy.pt` | whatever your run is at | — | no, gitignored; a run resumes from it |
 
 To track a newer policy instead, add the file and update the negation in
 `.gitignore` to match its name:
@@ -131,8 +131,32 @@ time. Running reward climbs from about -21 (losing every point) through 0
 22,400 episodes was still at -9.49, so it loses most points but has clearly
 learned to track the ball.
 
-Note that `pong.py` always starts from scratch: it saves checkpoints but does
-not load them, so it cannot resume an interrupted run.
+### Resuming
+
+A run picks up from `pong_policy.pt` if that file exists, restoring weights,
+optimizer state, episode count and running reward:
+
+```
+Resuming from pong_policy.pt at episode 99400 | running reward 6.959
+episode 99401 finished | reward: 12.0 | running mean: 7.009 | loss: -112.837
+```
+
+The resume is exact, not approximate. Saves happen every 100 episodes and
+gradients are stepped every 10, so a save always lands immediately after
+`optimizer.zero_grad()` — no partially accumulated gradient is ever in flight
+when the file is written. There is nothing else to restore.
+
+Set `RESUME = False` in `pong.py` to ignore an existing checkpoint and train
+from scratch. Either way the file gets overwritten as training proceeds, so
+archive anything you want to keep before starting a fresh run.
+
+Only `pong_policy.pt` is picked up automatically. To continue training from an
+archived policy, copy it into place first:
+
+```bash
+cp "checkpoints/pong-ep99400-reward+6.96.pt" pong_policy.pt
+uv run pong.py
+```
 
 The network runs on CPU by default. For a net this small and this sequential,
 CPU is usually the right call — per-step overhead dominates, so `mps` does not
