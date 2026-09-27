@@ -3,105 +3,38 @@ Watch a trained Pong policy play.
 
 Two modes:
 
-    uv run play.py --mode human          # live pygame window (needs: uv add pygame)
-    uv run play.py --mode rgb            # headless; saves frames for the notebook
+    uv run play.py --mode human          # live pygame window
+    uv run play.py --mode rgb            # headless; captures frames
 
-The policy definition here duplicates pong.py on purpose: importing pong.py
-would start a training run, because its loop is at module level.
+The network, preprocessing, environment settings and checkpoint loading all
+come from agent.py, so this cannot drift from what pong.py trained. Names are
+re-exported below because the notebooks and replay.py call play.load_policy(),
+play.make_env() and play.rollout().
 """
 
 import argparse
-import math
 from pathlib import Path
 
 import torch
-import torch.nn as nn
-import gymnasium as gym
-import ale_py
 
+from agent import (
+    D,
+    H,
+    Policy,
+    default_checkpoint,
+    get_device,
+    load_policy,
+    make_env,
+    preprocess,
+)
 
-H = 200
-D = 80 * 80
+device = get_device()
 
-device = torch.device("cpu")
-
-
-class Policy(nn.Module):
-    """Identical to pong.py: 6400 -> 200 -> 1, no biases."""
-
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(D, H, bias=False)
-        self.fc2 = nn.Linear(H, 1, bias=False)
-
-    def forward(self, x):
-        h = torch.relu(self.fc1(x))
-        return torch.sigmoid(self.fc2(h)).squeeze()
-
-
-def preprocess(observation):
-    """210x160x3 RGB frame -> 6400 float tensor. Same as pong.py."""
-    x = torch.from_numpy(observation)
-    x = x[35:195]
-    x = x[::2, ::2, 0]
-    x = ((x != 144) & (x != 109) & (x != 0)).float()
-    return x.flatten().to(device)
-
-
-CHECKPOINT_DIR = Path("checkpoints")
-
-
-def default_checkpoint():
-    """
-    Where to find weights when none were named.
-
-    A live training run writes pong_policy.pt into the project root, and that
-    is gitignored: checkpoints stay on the machine that trained them. So prefer
-    it when it exists, and otherwise fall back to the newest archived policy in
-    checkpoints/, which is what a fresh clone has.
-    """
-    live = Path("pong_policy.pt")
-    if live.exists():
-        return live
-
-    archived = sorted(CHECKPOINT_DIR.glob("*.pt"), key=lambda f: f.stat().st_mtime)
-    if archived:
-        return archived[-1]
-
-    raise FileNotFoundError(
-        "No checkpoint found. Train one with `uv run pong.py`, or pass "
-        "--checkpoint pointing at a .pt file."
-    )
-
-
-def load_policy(checkpoint=None):
-    checkpoint = Path(checkpoint) if checkpoint else default_checkpoint()
-    ckpt = torch.load(checkpoint, map_location=device, weights_only=False)
-    policy = Policy().to(device)
-    policy.load_state_dict(ckpt["model_state_dict"])
-    policy.eval()                       # no dropout/BN here, but state the intent
-    print(
-        f"loaded {checkpoint} | "
-        f"episode {ckpt['episode']} | "
-        f"running reward {ckpt['running_reward']:.2f}"
-    )
-    return policy
-
-
-def make_env(render_mode, sticky=0.25):
-    """
-    sticky=0.25 reproduces training conditions (and the old Pong-v0 default).
-    sticky=0.0 removes the action-repeat noise; the agent usually looks
-    sharper, but it is no longer the distribution it was trained on.
-    """
-    gym.register_envs(ale_py)
-    return gym.make(
-        "ALE/Pong-v5",
-        frameskip=(2, 5),
-        repeat_action_probability=sticky,
-        full_action_space=False,
-        render_mode=render_mode,
-    )
+# Re-exported for the notebooks and replay.py, which import them from here.
+__all__ = [
+    "D", "H", "Policy", "default_checkpoint", "get_device",
+    "load_policy", "make_env", "preprocess", "rollout",
+]
 
 
 @torch.no_grad()
@@ -133,7 +66,7 @@ def rollout(
     score_us = score_them = 0
 
     for step in range(max_steps):
-        current_frame = preprocess(observation)
+        current_frame = preprocess(observation, device)
 
         # The network sees motion, not a still: the difference image.
         if previous_frame is None:

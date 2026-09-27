@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # --locked fails if pyproject.toml and uv.lock have drifted, which is the
+      # most common way a branch breaks everyone else's environment.
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      # The notebooks are the teaching material; malformed JSON or a missing
+      # cell id breaks them silently in Colab.
+      - name: Validate notebooks
+        run: |
+          uv run python - <<'PY'
+          import glob, nbformat, warnings
+          warnings.simplefilter("error")
+          for path in sorted(glob.glob("*.ipynb")):
+              nbformat.validate(nbformat.read(path, as_version=4))
+              print(f"{path}: ok")
+          PY

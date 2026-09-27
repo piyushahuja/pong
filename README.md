@@ -84,12 +84,19 @@ The repo owns Python, torch, Gymnasium, ALE and the code. The host owns the
 NVIDIA driver, the GPU and the OS — different layers, and you should not need
 to install a CUDA toolkit by hand for the torch wheels pinned here.
 
-**It will still train on CPU.** `pong.py` and `play.py` both hardcode
-`torch.device("cpu")`; there is no device auto-selection yet. On this network
-that is a defensible default — 1.28M parameters stepped one frame at a time is
-dominated by per-step overhead, not matrix multiplication, so a GPU often loses
-to CPU here. But it means `nvidia-smi` will look idle, and that is expected
-rather than a misconfiguration. To use the GPU, change `device` in both files.
+**It defaults to CPU, on purpose.** Set `PONG_DEVICE` to change it:
+
+```bash
+PONG_DEVICE=cuda uv run pong.py     # explicit
+PONG_DEVICE=auto uv run pong.py     # cuda, else mps, else cpu
+```
+
+CPU is the default because this network is 1.28M parameters stepped one frame
+at a time: per-step overhead dominates, not matrix multiplication, so a GPU
+often loses to CPU here. Every checkpoint so far was also trained on CPU, so
+staying there keeps a resumed run consistent with what it resumes. If you run
+the default and `nvidia-smi` looks idle, that is expected, not a
+misconfiguration.
 
 ## Versions
 
@@ -109,6 +116,7 @@ to 1108 and made "the locked environment" mean one thing.
 
 | Path | What it is |
 |---|---|
+| `agent.py` | `Policy`, `preprocess`, `make_env`, `get_device`, checkpoint loading. The definitions everything else shares. |
 | `pong.py` | The training loop. Runs until you stop it. |
 | `play.py` | Load a checkpoint and play: live window or headless frame capture. |
 | `replay.py` | `watch()` — an inline HTML5 player for a single episode. |
@@ -118,7 +126,8 @@ to 1108 and made "the locked environment" mean one thing.
 | `Notebook-3-train-step.ipynb` | probability → Bernoulli sample → log-prob → loss → step. |
 | `Notebook-4-watch-agent.ipynb` | What a checkpoint holds; loading it; replaying an episode. |
 | `checkpoints/` | Archived policies. One is tracked; the rest stay local. |
-| `test_pong.py` | Scratch script: drives the env with random actions. |
+| `explore_env.py` | Scratch script: drives the env with random actions. |
+| `tests/` | Fast contract tests — no training. `uv run pytest`. |
 | `main.py` | uv's generated entry-point stub; nothing depends on it. |
 | `assets/` | Explanatory figures for the notebooks. |
 
@@ -164,7 +173,9 @@ play. Notebook 4 unpacks it.
 
 ### Which checkpoint gets loaded
 
-Nothing hardcodes a path. `play.default_checkpoint()` resolves in order:
+Nothing hardcodes a path. `agent.default_checkpoint()` — also reachable as
+`play.default_checkpoint()`, which is how the notebooks call it — resolves in
+order:
 
 1. `--checkpoint`, if you passed one
 2. `pong_policy.pt` in the project root — a live training run on this machine
@@ -264,6 +275,9 @@ if a few things stay true:
    you intend to report. "gamma 0.99 did better" is not recoverable six months
    later without them.
 8. On Colab, run the bootstrap cell first.
+9. Run `uv run pytest` before pushing. It takes about a second and CI runs the
+   same thing, plus a `uv sync --locked` check that catches a lockfile you
+   forgot to commit.
 
 The split, stated once:
 
@@ -279,16 +293,19 @@ The split, stated once:
 
 Worth knowing before handing this to someone:
 
-- **`Policy` is defined twice**, in `pong.py` and again in `play.py`, because
-  importing `pong.py` would start a training run — its loop sits at module
-  level. `pong.ipynb` defines a third with `H = 300` where the scripts use
-  `H = 200`. Three definitions is two too many, and the notebook's already
-  disagrees.
-- **No device selection.** Both scripts pin CPU; see the GPU server section.
-- **No tests and no CI.** `test_pong.py` is a scratch script that opens a render
-  window and loops, not something a CI runner can execute.
+- **`pong.ipynb` still defines its own policy with `H = 300`**, where the
+  scripts use 200. `agent.py` is now the single definition for `pong.py`,
+  `play.py` and the numbered notebooks, but the exploratory notebook predates
+  it and has not been folded in.
 - **No provenance recording.** A run saves weights, episode count and running
-  reward, but not the git commit, seed, or configuration that produced them.
+  reward, but not the git commit, seed, or configuration that produced them, so
+  "gamma 0.99 did better" is not reconstructable later.
+- **No config files or experiment runner.** Hyperparameters are module-level
+  constants in `pong.py`, so comparing `gamma=0.95` against `gamma=0.99` means
+  editing the file rather than passing an argument.
+- **`pong.py`'s loop is at module level**, so importing it starts training.
+  That is why the training loop is not itself importable or testable; only the
+  pieces in `agent.py` are.
 
 ## Implementation notes
 

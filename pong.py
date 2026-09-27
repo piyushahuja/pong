@@ -1,26 +1,30 @@
-import math
-from pathlib import Path
-
 import torch
-import torch.nn as nn
-import gymnasium as gym
-import ale_py
+
+from agent import (
+    CHECKPOINT,
+    D,
+    H,
+    Policy,
+    get_device,
+    make_env,
+    preprocess,
+)
 
 
 # ------------------------------------------------------------
 # Hyperparameters
+#
+# Network shape (H, D) lives in agent.py, because play.py and the
+# checkpoints have to agree with it. These are the ones that only
+# matter while training.
 # ------------------------------------------------------------
 
-H = 200
 BATCH_SIZE = 10
 LEARNING_RATE = 1e-4
 GAMMA = 0.99
 DECAY_RATE = 0.99
 
-D = 80 * 80
-
 RENDER = False
-CHECKPOINT = Path("pong_policy.pt")
 
 # Pick up an interrupted run from CHECKPOINT instead of starting over.
 # Set False to ignore an existing checkpoint and train from scratch;
@@ -30,11 +34,13 @@ RESUME = True
 
 # ------------------------------------------------------------
 # Device
+#
+# Defaults to CPU; set PONG_DEVICE=auto or PONG_DEVICE=cuda to
+# override. See get_device() in agent.py for why CPU is the default
+# for a network this small.
 # ------------------------------------------------------------
 
-# For this particular tiny, sequential network, I recommend CPU first.
-# You can change this to "mps" later.
-device = torch.device("cpu")
+device = get_device()
 
 print(f"Using device: {device}")
 
@@ -43,134 +49,9 @@ print(f"Using device: {device}")
 # Environment
 # ------------------------------------------------------------
 
-gym.register_envs(ale_py)
-
-env = gym.make(
-    "ALE/Pong-v5",
-
-    # These reproduce the important old Pong-v0 settings
-    # that the original implementation relied on:
-    frameskip=(2, 5),
-    repeat_action_probability=0.25,
-    full_action_space=False,
-
-    render_mode="human" if RENDER else None,
-)
+env = make_env("human" if RENDER else None)
 
 observation, info = env.reset()
-
-
-# ------------------------------------------------------------
-# Preprocessing
-# Reference NumPy version:
-#
-# def prepro(I):
-#     I = I[35:195]
-#     I = I[::2, ::2, 0]
-#     I[I == 144] = 0
-#     I[I == 109] = 0
-#     I[I != 0] = 1
-#     return I.astype(np.float).ravel()
-# ------------------------------------------------------------
-
-def preprocess(observation):
-    """
-    Convert a 210x160x3 Atari RGB frame into a
-    6400-element PyTorch tensor.
-
-    No NumPy code needed explicitly.
-    """
-
-    # Gym/ALE gives us a NumPy array.
-    # Turn it into a torch tensor immediately.
-    x = torch.from_numpy(observation)
-
-    # 210x160x3
-    #
-    # Crop away top and bottom:
-    # 160x160x3
-    x = x[35:195]
-
-    # Take every second pixel in both spatial dimensions,
-    # and only one colour channel:
-    #
-    # 160x160x3 -> 80x80
-    x = x[::2, ::2, 0]
-
-    # Remove the two background colours,
-    # then turn every remaining non-zero pixel into 1.
-    #
-    # Background -> 0
-    # Ball/paddles -> 1
-    x = (
-        (x != 144)
-        & (x != 109)
-        & (x != 0)
-    ).float()
-
-    # 80x80 -> 6400
-    x = x.flatten()
-
-    return x.to(device)
-
-
-# ------------------------------------------------------------
-# Policy network
-#
-# Reference NumPy version:
-#
-# h = np.dot(W1, x)
-# h[h < 0] = 0
-# logp = np.dot(W2, h)
-# p = sigmoid(logp)
-# ------------------------------------------------------------
-
-class Policy(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-
-        # No biases: two bare weight matrices.
-        self.fc1 = nn.Linear(
-            D,
-            H,
-            bias=False,
-        )
-
-        self.fc2 = nn.Linear(
-            H,
-            1,
-            bias=False,
-        )
-
-        # Match the reference initialization:
-        #
-        # W1 = randn(H, D) / sqrt(D)
-        # W2 = randn(H)    / sqrt(H)
-
-        nn.init.normal_(
-            self.fc1.weight,
-            mean=0.0,
-            std=1.0 / math.sqrt(D),
-        )
-
-        nn.init.normal_(
-            self.fc2.weight,
-            mean=0.0,
-            std=1.0 / math.sqrt(H),
-        )
-
-    def forward(self, x):
-
-        h = self.fc1(x)
-
-        h = torch.relu(h)
-
-        logit = self.fc2(h)
-
-        probability = torch.sigmoid(logit)
-
-        return probability.squeeze()
 
 
 policy = Policy().to(device)
@@ -322,7 +203,7 @@ try:
         # 1. Process current screen
         # ----------------------------------------------------
 
-        current_frame = preprocess(observation)
+        current_frame = preprocess(observation, device)
 
 
         # ----------------------------------------------------
