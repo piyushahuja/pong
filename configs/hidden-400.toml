@@ -1,0 +1,5 @@
+# Twice the hidden layer. A checkpoint from this config cannot be loaded by a
+# run using baseline.toml -- the weight shapes differ -- which is why hidden is
+# recorded in both config.json and the checkpoint itself.
+
+hidden = 400

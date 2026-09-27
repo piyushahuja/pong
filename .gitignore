@@ -28,3 +28,8 @@ wheels/
 *.pt
 *.pt copy
 !checkpoints/pong-ep99400-reward+6.96.pt
+
+# Experiment run directories: settings, provenance, metrics and checkpoints.
+# Reproducible from the config plus the recorded commit, so they are outputs,
+# not sources.
+outputs/

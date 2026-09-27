@@ -125,19 +125,54 @@ def test_checkpoint_round_trip(tmp_path, monkeypatch):
         assert torch.equal(a, b), f"{name} changed across save/load"
 
 
-def test_default_checkpoint_prefers_live_then_archive(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_default_checkpoint_resolution_order(tmp_path, monkeypatch):
+    """Paths come from the project root, so point the constants at a fake one."""
+    monkeypatch.setattr(agent, "CHECKPOINT", tmp_path / "pong_policy.pt")
+    monkeypatch.setattr(agent, "CHECKPOINT_DIR", tmp_path / "checkpoints")
+    monkeypatch.setattr(agent, "OUTPUT_DIR", tmp_path / "outputs")
 
     with pytest.raises(FileNotFoundError):
         agent.default_checkpoint()
 
+    # 3rd choice: the archived policy a fresh clone has.
     archive = tmp_path / "checkpoints"
     archive.mkdir()
     (archive / "pong-ep100-reward-20.00.pt").touch()
     assert agent.default_checkpoint().name == "pong-ep100-reward-20.00.pt"
 
-    Path("pong_policy.pt").touch()
-    assert agent.default_checkpoint().name == "pong_policy.pt", "live run must win"
+    # 2nd choice: a run directory beats the archive.
+    run = tmp_path / "outputs" / "2026-01-01T00-00-00Z-baseline"
+    run.mkdir(parents=True)
+    (run / "policy.pt").touch()
+    resolved = agent.default_checkpoint()
+    assert resolved.parent.name.endswith("baseline"), resolved
+
+    # 1st choice: a live run in the project root beats everything.
+    (tmp_path / "pong_policy.pt").touch()
+    assert agent.default_checkpoint().name == "pong_policy.pt"
+
+
+def test_default_checkpoint_picks_newest_run(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent, "CHECKPOINT", tmp_path / "absent.pt")
+    monkeypatch.setattr(agent, "CHECKPOINT_DIR", tmp_path / "absent")
+    monkeypatch.setattr(agent, "OUTPUT_DIR", tmp_path / "outputs")
+
+    for name, mtime in [("older", 1_000_000), ("newer", 2_000_000)]:
+        run = tmp_path / "outputs" / name
+        run.mkdir(parents=True)
+        policy = run / "policy.pt"
+        policy.touch()
+        os.utime(policy, (mtime, mtime))
+
+    assert agent.default_checkpoint().parent.name == "newer"
+
+
+def test_paths_are_root_relative_not_cwd_relative(tmp_path, monkeypatch):
+    """Running from a subdirectory must not change which files are found."""
+    before = agent.CHECKPOINT_DIR
+    monkeypatch.chdir(tmp_path)
+    assert agent.CHECKPOINT_DIR == before
+    assert agent.CHECKPOINT_DIR.is_absolute()
 
 
 def test_play_reexports_match_agent():

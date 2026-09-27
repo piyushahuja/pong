@@ -21,6 +21,8 @@ import torch.nn as nn
 import gymnasium as gym
 import ale_py
 
+from experiment import PROJECT_ROOT
+
 
 # ------------------------------------------------------------
 # Shape
@@ -41,8 +43,11 @@ D = 80 * 80
 FRAMESKIP = (2, 5)
 STICKY = 0.25
 
-CHECKPOINT = Path("pong_policy.pt")
-CHECKPOINT_DIR = Path("checkpoints")
+# Resolved against the project root, not the working directory, so play.py
+# and the notebooks find the same files from wherever they are run.
+CHECKPOINT = PROJECT_ROOT / "pong_policy.pt"
+CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
 
 # ------------------------------------------------------------
@@ -222,13 +227,23 @@ def default_checkpoint():
     """
     Where to find weights when none were named.
 
-    A live training run writes pong_policy.pt into the project root, and that
-    is gitignored: checkpoints stay on the machine that trained them. So prefer
-    it when it exists, and otherwise fall back to the newest archived policy in
-    checkpoints/, which is what a fresh clone has.
+    In order:
+
+    1. pong_policy.pt in the project root -- where runs used to write, and
+       where a long-lived training run may still be writing.
+    2. the newest outputs/<run>/policy.pt -- the most recent experiment.
+    3. the newest checkpoints/*.pt -- the archived policies, which is all a
+       fresh clone has.
+
+    All of these are gitignored except the one tracked archive: checkpoints
+    stay on the machine that trained them.
     """
     if CHECKPOINT.exists():
         return CHECKPOINT
+
+    runs = sorted(OUTPUT_DIR.glob("*/policy.pt"), key=lambda f: f.stat().st_mtime)
+    if runs:
+        return runs[-1]
 
     archived = sorted(CHECKPOINT_DIR.glob("*.pt"), key=lambda f: f.stat().st_mtime)
     if archived:

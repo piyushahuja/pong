@@ -1,0 +1,11 @@
+# The settings the tracked 99,400-episode policy was trained with.
+# Every other config in this directory is a deviation from this one, so
+# change it only if you mean to move the baseline everyone compares against.
+
+hidden = 200            # hidden units; the checkpoint's shape depends on this
+batch_size = 10         # episodes of accumulated gradient per optimizer step
+learning_rate = 1e-4
+gamma = 0.99            # reward discount within a rally
+decay_rate = 0.99       # RMSProp alpha
+seed = 0
+save_every = 100        # episodes between checkpoint writes

@@ -117,6 +117,7 @@ to 1108 and made "the locked environment" mean one thing.
 | Path | What it is |
 |---|---|
 | `agent.py` | `Policy`, `preprocess`, `make_env`, `get_device`, checkpoint loading. The definitions everything else shares. |
+| `experiment.py` | Configs, run directories, provenance. Knows nothing about Pong. |
 | `pong.py` | The training loop. Runs until you stop it. |
 | `play.py` | Load a checkpoint and play: live window or headless frame capture. |
 | `replay.py` | `watch()` — an inline HTML5 player for a single episode. |
@@ -127,6 +128,8 @@ to 1108 and made "the locked environment" mean one thing.
 | `Notebook-4-watch-agent.ipynb` | What a checkpoint holds; loading it; replaying an episode. |
 | `checkpoints/` | Archived policies. One is tracked; the rest stay local. |
 | `explore_env.py` | Scratch script: drives the env with random actions. |
+| `configs/` | One TOML file per experiment. `baseline.toml` is what the tracked policy used. |
+| `outputs/` | One directory per run: settings, provenance, metrics, checkpoint. Gitignored. |
 | `tests/` | Fast contract tests — no training. `uv run pytest`. |
 | `main.py` | uv's generated entry-point stub; nothing depends on it. |
 | `assets/` | Explanatory figures for the notebooks. |
@@ -178,11 +181,14 @@ Nothing hardcodes a path. `agent.default_checkpoint()` — also reachable as
 order:
 
 1. `--checkpoint`, if you passed one
-2. `pong_policy.pt` in the project root — a live training run on this machine
-3. the newest `.pt` in `checkpoints/` — what a fresh clone has
+2. `pong_policy.pt` in the project root — where runs used to write, and where a
+   long-lived training run may still be writing
+3. the newest `outputs/<run>/policy.pt` — your most recent experiment
+4. the newest `.pt` in `checkpoints/` — what a fresh clone has
 
 So the same code does the right thing whether you are mid-training locally or
-on a bare clone in Colab.
+on a bare clone in Colab. Paths resolve against the project root rather than
+the working directory, so running from a subdirectory finds the same files.
 
 ## Training
 
@@ -190,8 +196,9 @@ on a bare clone in Colab.
 uv run pong.py
 ```
 
-Prints per-episode reward and a running mean, and saves every 100 episodes. It
-runs until interrupted.
+Prints per-episode reward and a running mean, writes a checkpoint every 100
+episodes into a fresh directory under `outputs/`, and runs until you stop it.
+See [Experiments](#experiments) for configs, provenance and resuming.
 
 This is slow. The tracked policy took roughly 99,000 episodes — days of CPU
 time. Running reward climbs from about -21 (losing every point) through 0
@@ -199,36 +206,106 @@ time. Running reward climbs from about -21 (losing every point) through 0
 22,400 episodes was still at -9.49, so it loses most points but has clearly
 learned to track the ball.
 
-### Resuming
+The resume is exact rather than approximate, and that is a property of where
+saves land: gradients are stepped every 10 episodes and checkpoints written
+every 100, so a save always happens immediately after `optimizer.zero_grad()`.
+No partially accumulated gradient is ever in flight when the file is written,
+which is why weights, optimizer state, episode count and running reward are the
+whole picture.
 
-A run picks up from `pong_policy.pt` if that file exists, restoring weights,
-optimizer state, episode count and running reward:
+Training runs on CPU unless you say otherwise — `--device auto`, `--device
+cuda`, or `PONG_DEVICE`. See the [GPU server](#on-a-gpu-server) section for why
+CPU is the default here.
 
-```
-Resuming from pong_policy.pt at episode 99400 | running reward 6.959
-episode 99401 finished | reward: 12.0 | running mean: 7.009 | loss: -112.837
-```
+## Experiments
 
-The resume is exact, not approximate. Saves happen every 100 episodes and
-gradients are stepped every 10, so a save always lands immediately after
-`optimizer.zero_grad()` — no partially accumulated gradient is ever in flight
-when the file is written. There is nothing else to restore.
-
-Set `RESUME = False` in `pong.py` to ignore an existing checkpoint and train
-from scratch. Either way the file gets overwritten as training proceeds, so
-archive anything you want to keep before starting a fresh run.
-
-Only `pong_policy.pt` is picked up automatically. To continue training from an
-archived policy, copy it into place first:
+An experiment is this code plus a configuration, never a copy of the code.
+Comparing three discount factors is three invocations, not three files:
 
 ```bash
-cp "checkpoints/pong-ep99400-reward+6.96.pt" pong_policy.pt
-uv run pong.py
+uv run pong.py --config gamma-090
+uv run pong.py --config gamma-095
+uv run pong.py --config baseline
 ```
 
-The network runs on CPU by default. For a net this small and this sequential,
-CPU is usually the right call — per-step overhead dominates, so `mps` does not
-obviously help. Change `device` in `pong.py` to try it.
+Settings come from three layers, each overriding the one before: the defaults
+in `pong.py`, then a TOML file in `configs/`, then command-line flags.
+
+```bash
+uv run pong.py --gamma 0.95 --seed 3          # no config file needed
+uv run pong.py --config gamma-090 --seed 3    # config, with one override
+uv run pong.py --help                         # every setting is a flag
+```
+
+A setting a config names but the code does not know is an error, not something
+quietly ignored — a typo like `gama = 0.9` fails at startup rather than
+producing a run that silently used 0.99.
+
+Configs are TOML rather than YAML so this needs no dependency beyond the
+standard library: `tomllib` is built in, and the project pins Python 3.12.
+
+### What a run leaves behind
+
+Every run gets its own directory and writes nothing outside it, so two runs can
+never overwrite each other:
+
+```
+outputs/2026-09-28T03-19-53Z-gamma-090/
+├── config.json      the settings, and which layer each came from
+├── metadata.json    commit, dirty flag, seed, device, platform, versions, argv
+├── metrics.csv      one row per episode, flushed as it goes
+└── policy.pt        the checkpoint, carrying its settings inside it
+```
+
+`config.json` records not just the values but where each came from:
+
+```json
+"settings": { "gamma": 0.9,     "seed": 7,   "hidden": 200 },
+"source":   { "gamma": "config", "seed": "cli", "hidden": "default" }
+```
+
+That answers the question you actually have when reading an old run back —
+which of these did I set, and which was just the default?
+
+`metadata.json` records `git_commit` **and** `git_dirty`. The dirty flag matters
+as much as the commit: a run made with uncommitted edits is not reproducible
+from that commit alone, and recording the fact is the difference between a
+usable result and a misleading one.
+
+The settings also go inside `policy.pt`, so a checkpoint can still say what
+produced it if it gets separated from its directory.
+
+### Seeds reproduce
+
+`--seed` seeds torch and the first `env.reset()`. Only the first — seeding every
+reset would make every episode identical, which is a single game on a loop
+rather than reproducibility. Two runs at the same seed produce identical
+metrics, down to the loss:
+
+```
+episode,reward,running_mean,loss
+1,-19.0,-19.0,-0.3787
+2,-21.0,-19.02,-1.1829
+```
+
+### Stopping and resuming
+
+A run always leaves its checkpoint, including when you Ctrl+C it — the save is
+in a `finally`, so stopping a run mid-episode costs you that episode, not
+everything since the last periodic save. Interrupting before the first episode
+finishes discards the directory instead of leaving one that claims a result.
+
+```bash
+uv run pong.py --resume                        # continue the newest checkpoint
+uv run pong.py --resume-from outputs/<run>/policy.pt
+uv run pong.py --episodes 500                  # stop after N episodes
+```
+
+Resuming is explicit and off by default. Silently continuing from whatever
+checkpoint happened to be lying around is how you end up reporting a
+`gamma=0.90` result that was mostly trained at `0.99`. Resuming a checkpoint
+whose `hidden` differs from the current run is refused outright, since the
+weight shapes cannot match.
 
 ## Watching a trained agent
 
@@ -264,16 +341,16 @@ if a few things stay true:
 3. Do not `pip install` into the environment. A dependency the project needs is
    added deliberately with `uv add X`, which updates `pyproject.toml` and
    `uv.lock` — commit both.
-4. Put experiment differences in arguments, not in copied files. Prefer one
-   script taking `--gamma 0.95` over `pong_gamma95.py`.
+4. Put experiment differences in configs or arguments, not in copied files:
+   `--config gamma-090` or `--gamma 0.95`, never `pong_gamma95.py`.
 5. Never hardcode an absolute path. Paths are built from the project root, so
    the repo works at `/content/pong-pytorch` and `/home/you/pong-pytorch`
    alike.
 6. Commit source, configs and small assets. Not `.venv/`, not datasets, not
    routine checkpoints or videos.
-7. Record the seed, the git commit and the configuration alongside any result
-   you intend to report. "gamma 0.99 did better" is not recoverable six months
-   later without them.
+7. Report results from a run directory, not from terminal scrollback. Every run
+   already records the seed, commit, dirty flag and configuration; quote the
+   directory name and that is all recoverable.
 8. On Colab, run the bootstrap cell first.
 9. Run `uv run pytest` before pushing. It takes about a second and CI runs the
    same thing, plus a `uv sync --locked` check that catches a lockfile you
@@ -297,12 +374,9 @@ Worth knowing before handing this to someone:
   scripts use 200. `agent.py` is now the single definition for `pong.py`,
   `play.py` and the numbered notebooks, but the exploratory notebook predates
   it and has not been folded in.
-- **No provenance recording.** A run saves weights, episode count and running
-  reward, but not the git commit, seed, or configuration that produced them, so
-  "gamma 0.99 did better" is not reconstructable later.
-- **No config files or experiment runner.** Hyperparameters are module-level
-  constants in `pong.py`, so comparing `gamma=0.95` against `gamma=0.99` means
-  editing the file rather than passing an argument.
+- **Metrics are per-run, with nothing to compare them.** Each run writes its own
+  `metrics.csv`; there is no script that reads several runs and reports which
+  configuration won over how many seeds.
 - **`pong.py`'s loop is at module level**, so importing it starts training.
   That is why the training loop is not itself importable or testable; only the
   pieces in `agent.py` are.

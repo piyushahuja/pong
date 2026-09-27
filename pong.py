@@ -1,10 +1,26 @@
+"""
+Train a Pong policy with REINFORCE.
+
+    uv run pong.py                          # baseline settings
+    uv run pong.py --config gamma-090       # a config from configs/
+    uv run pong.py --gamma 0.95 --seed 3    # or override directly
+    uv run pong.py --resume                 # continue the newest checkpoint
+
+Every run writes its own directory under outputs/ holding the settings, the
+provenance (commit, seed, device, versions), per-episode metrics and the
+checkpoint. Nothing is written outside it, so two runs never collide.
+"""
+
+import argparse
+from pathlib import Path
+
 import torch
 
+import experiment
 from agent import (
-    CHECKPOINT,
     D,
-    H,
     Policy,
+    default_checkpoint,
     get_device,
     make_env,
     preprocess,
@@ -12,37 +28,87 @@ from agent import (
 
 
 # ------------------------------------------------------------
-# Hyperparameters
+# Settings
 #
-# Network shape (H, D) lives in agent.py, because play.py and the
-# checkpoints have to agree with it. These are the ones that only
-# matter while training.
+# Defaults are the baseline the tracked policy was trained with. A config
+# file overrides them and a command-line flag overrides that, so an
+# experiment is this code plus a configuration rather than a copy of it.
+#
+# Network shape (D) and the environment settings live in agent.py, because
+# play.py and every checkpoint have to agree with them.
 # ------------------------------------------------------------
 
-BATCH_SIZE = 10
-LEARNING_RATE = 1e-4
-GAMMA = 0.99
-DECAY_RATE = 0.99
+DEFAULTS = {
+    "hidden": 200,
+    "batch_size": 10,
+    "learning_rate": 1e-4,
+    "gamma": 0.99,
+    "decay_rate": 0.99,
+    "seed": 0,
+    "save_every": 100,
+}
 
-RENDER = False
+parser = argparse.ArgumentParser(
+    description="Train a Pong policy with REINFORCE.",
+)
+parser.add_argument("--config", help="a TOML file in configs/, by name or path")
+parser.add_argument("--name", help="run directory label (default: the config name)")
+parser.add_argument("--render", action="store_true", help="show the game window")
+parser.add_argument("--device", help='"cpu", "cuda", "mps" or "auto"')
+parser.add_argument("--episodes", type=int, help="stop after this many episodes")
+parser.add_argument("--resume", action="store_true",
+                    help="continue from the newest checkpoint found")
+parser.add_argument("--resume-from", metavar="PATH",
+                    help="continue from a specific checkpoint")
 
-# Pick up an interrupted run from CHECKPOINT instead of starting over.
-# Set False to ignore an existing checkpoint and train from scratch;
-# either way the file is overwritten as training proceeds.
-RESUME = True
+for _key, _value in DEFAULTS.items():
+    parser.add_argument(
+        f"--{_key.replace('_', '-')}",
+        type=type(_value),
+        default=None,                       # None means "not set on the CLI"
+        help=f"default {_value}",
+    )
+
+args = parser.parse_args()
+
+config = experiment.load_config(args.config) if args.config else {}
+overrides = {key: getattr(args, key) for key in DEFAULTS}
+settings, source = experiment.resolve_config(DEFAULTS, config, overrides)
+
+# The names the training loop below reads.
+BATCH_SIZE = settings["batch_size"]
+LEARNING_RATE = settings["learning_rate"]
+GAMMA = settings["gamma"]
+DECAY_RATE = settings["decay_rate"]
+SAVE_EVERY = settings["save_every"]
+SEED = settings["seed"]
+
+RENDER = args.render
+MAX_EPISODES = args.episodes
 
 
 # ------------------------------------------------------------
 # Device
 #
-# Defaults to CPU; set PONG_DEVICE=auto or PONG_DEVICE=cuda to
-# override. See get_device() in agent.py for why CPU is the default
-# for a network this small.
+# Defaults to CPU; --device auto or PONG_DEVICE=auto to override. See
+# get_device() in agent.py for why CPU is the default for a network
+# this small.
 # ------------------------------------------------------------
 
-device = get_device()
+device = get_device(args.device)
 
 print(f"Using device: {device}")
+
+
+# ------------------------------------------------------------
+# Seeding
+#
+# Only the first reset is seeded. Seeding every reset would make each
+# episode identical, which is not reproducibility but a single game on
+# a loop.
+# ------------------------------------------------------------
+
+torch.manual_seed(SEED)
 
 
 # ------------------------------------------------------------
@@ -51,10 +117,34 @@ print(f"Using device: {device}")
 
 env = make_env("human" if RENDER else None)
 
-observation, info = env.reset()
+observation, info = env.reset(seed=SEED)
 
 
-policy = Policy().to(device)
+# ------------------------------------------------------------
+# Run directory
+#
+# Written before training starts, so an interrupted run still records
+# what it was trying to do.
+# ------------------------------------------------------------
+
+run = experiment.start_run(
+    name=args.name or (Path(args.config).stem if args.config else "baseline"),
+    settings=settings,
+    source=source,
+    device=device,
+    metrics_fields=["episode", "reward", "running_mean", "loss", "elapsed_seconds"],
+)
+
+CHECKPOINT = run.checkpoint
+
+print(f"Run directory: {run.dir}")
+print("Settings: " + ", ".join(
+    f"{k}={v}" + ("" if source[k] == "default" else f" ({source[k]})")
+    for k, v in sorted(settings.items())
+))
+
+
+policy = Policy(hidden=settings["hidden"]).to(device)
 
 
 # ------------------------------------------------------------
@@ -71,6 +161,31 @@ optimizer = torch.optim.RMSprop(
     momentum=0.0,
     weight_decay=0.0,
 )
+
+
+# ------------------------------------------------------------
+# Saving
+#
+# One writer, used by the periodic save in step 17 and again when the
+# loop exits. Without the second call a run shorter than save_every
+# episodes would finish having produced no policy at all, and Ctrl+C
+# would throw away everything since the last multiple of save_every.
+# ------------------------------------------------------------
+
+def save_checkpoint():
+    torch.save(
+        {
+            "episode": episode_number,
+            "model_state_dict": policy.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "running_reward": running_reward,
+
+            # Carried so a checkpoint can say what produced it without
+            # its run directory beside it.
+            "settings": settings,
+        },
+        CHECKPOINT,
+    )
 
 
 # ------------------------------------------------------------
@@ -133,27 +248,41 @@ running_reward = None
 # ------------------------------------------------------------
 # Resume from a checkpoint
 #
-# Checkpoints are written every 100 episodes, and 100 is a
-# multiple of BATCH_SIZE, so a save always lands just after
-# step 15 called optimizer.zero_grad(). No partially
-# accumulated gradient is ever in flight at save time, which
-# is what makes resuming exact rather than approximate:
-# weights, optimizer state, episode count and running reward
-# are the whole picture.
+# Checkpoints are written every save_every episodes, and save_every is a
+# multiple of batch_size, so a save always lands just after step 15
+# called optimizer.zero_grad(). No partially accumulated gradient is ever
+# in flight at save time, which is what makes resuming exact rather than
+# approximate: weights, optimizer state, episode count and running
+# reward are the whole picture.
 #
-# Only the live CHECKPOINT path is picked up. To continue from
-# an archived policy, copy it into place first:
-#
-#     cp checkpoints/pong-ep99400-reward+6.96.pt pong_policy.pt
+# Resuming is explicit -- --resume or --resume-from PATH -- and off by
+# default. Silently continuing from whatever checkpoint happened to be
+# lying around is how you end up reporting a gamma=0.90 result that was
+# mostly trained at 0.99.
 # ------------------------------------------------------------
 
-if RESUME and CHECKPOINT.exists():
+resume_from = args.resume_from or (default_checkpoint() if args.resume else None)
+
+if resume_from is not None:
 
     checkpoint = torch.load(
-        CHECKPOINT,
+        resume_from,
         map_location=device,
         weights_only=False,
     )
+
+    # A checkpoint's weight shapes are fixed at training time, so a
+    # different hidden size cannot be continued -- only compared.
+    saved = checkpoint.get("settings", {})
+    saved_hidden = saved.get("hidden", DEFAULTS["hidden"])
+
+    if saved_hidden != settings["hidden"]:
+        run.discard()
+        raise SystemExit(
+            f"{resume_from} was trained with hidden={saved_hidden}, "
+            f"but this run wants hidden={settings['hidden']}. "
+            f"Pass --hidden {saved_hidden} to continue it."
+        )
 
     policy.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -162,7 +291,7 @@ if RESUME and CHECKPOINT.exists():
     running_reward = checkpoint["running_reward"]
 
     print(
-        f"Resuming from {CHECKPOINT} at episode {episode_number}"
+        f"Resuming from {resume_from} at episode {episode_number}"
         + (
             f" | running reward {running_reward:.3f}"
             if running_reward is not None
@@ -172,10 +301,7 @@ if RESUME and CHECKPOINT.exists():
 
 else:
 
-    if RESUME:
-        print(f"No checkpoint at {CHECKPOINT}; starting from scratch.")
-    else:
-        print("RESUME is False; starting from scratch.")
+    print("Starting from scratch.")
 
 
 # Important:
@@ -437,31 +563,34 @@ try:
                 f"loss: {loss.item():.3f}"
             )
 
+            run.log(
+                episode=episode_number,
+                reward=reward_sum,
+                running_mean=round(running_reward, 4),
+                loss=round(loss.item(), 4),
+            )
+
 
             # ------------------------------------------------
             # 17. Save occasionally
             # ------------------------------------------------
 
-            if episode_number % 100 == 0:
+            if episode_number % SAVE_EVERY == 0:
 
-                torch.save(
-                    {
-                        "episode": episode_number,
-                        "model_state_dict":
-                            policy.state_dict(),
-
-                        "optimizer_state_dict":
-                            optimizer.state_dict(),
-
-                        "running_reward":
-                            running_reward,
-                    },
-                    CHECKPOINT,
-                )
+                save_checkpoint()
 
                 print(
                     f"Saved checkpoint to {CHECKPOINT}"
                 )
+
+
+            # ------------------------------------------------
+            # 17b. Stop if --episodes was given
+            # ------------------------------------------------
+
+            if MAX_EPISODES is not None and episode_number >= MAX_EPISODES:
+                print(f"Reached --episodes {MAX_EPISODES}; stopping.")
+                break
 
 
             # ------------------------------------------------
@@ -480,3 +609,15 @@ try:
 
 finally:
     env.close()
+
+    # Includes KeyboardInterrupt: stopping a run should not lose it.
+    if episode_number > 0:
+        save_checkpoint()
+        print(f"\nSaved checkpoint at episode {episode_number} to {CHECKPOINT}")
+        run.close()
+        print(f"Run directory: {run.dir}")
+    else:
+        # Interrupted before the first episode finished: there is no result,
+        # so do not leave a directory claiming there is one.
+        run.discard()
+        print("\nStopped before the first episode finished; discarded the run.")

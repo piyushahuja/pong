@@ -1,0 +1,4 @@
+# Shorter credit horizon: an action is scored mostly on what happens in the
+# next few frames. Compare against baseline.toml over several seeds.
+
+gamma = 0.90
