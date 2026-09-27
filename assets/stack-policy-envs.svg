@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="560" viewBox="0 0 760 560" role="img" aria-labelledby="title desc">
+  <title id="title">Same policy API, different environments</title>
+  <desc id="desc">Two parallel stacks: PyTorch to Gymnasium to MuJoCo robot on the left; PyTorch to Gymnasium to ALE Pong on the right. Package role cards for torch, gymnasium, and ale-py below.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4f7f6"/>
+      <stop offset="100%" stop-color="#e8eef0"/>
+    </linearGradient>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1a2b2e" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="760" height="560" rx="18" fill="url(#bg)"/>
+
+  <text x="380" y="42" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#1a2b2e">Same policy API, different environments</text>
+  <text x="380" y="66" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5a6b70">Top layers match; only the environment backend changes</text>
+
+  <!-- Left column header -->
+  <text x="190" y="100" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0d7377">Robot path</text>
+  <!-- Right column header -->
+  <text x="570" y="100" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#c45c26">Pong path</text>
+
+  <!-- Shared-layer highlight bands -->
+  <rect x="48" y="112" width="664" height="68" rx="12" fill="#0d7377" opacity="0.06"/>
+  <rect x="48" y="192" width="664" height="68" rx="12" fill="#0d7377" opacity="0.06"/>
+
+  <!-- LEFT STACK -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="120" width="240" height="52" rx="10" fill="#ffffff" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="190" y="151" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">PyTorch policy</text>
+
+  <polygon points="190,178 182,190 198,190" fill="#8aa0a6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="200" width="240" height="52" rx="10" fill="#ffffff" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="190" y="231" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">Gymnasium API</text>
+
+  <polygon points="190,258 182,270 198,270" fill="#8aa0a6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="280" width="240" height="52" rx="10" fill="#fff8f4" stroke="#c45c26" stroke-width="2"/>
+  </g>
+  <text x="190" y="311" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">MuJoCo</text>
+
+  <polygon points="190,338 182,350 198,350" fill="#c45c26"/>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="360" width="240" height="52" rx="10" fill="#fff8f4" stroke="#c45c26" stroke-width="2"/>
+  </g>
+  <text x="190" y="391" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">simulated robot</text>
+
+  <!-- RIGHT STACK -->
+  <g filter="url(#shadow)">
+    <rect x="450" y="120" width="240" height="52" rx="10" fill="#ffffff" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="570" y="151" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">PyTorch policy</text>
+
+  <polygon points="570,178 562,190 578,190" fill="#8aa0a6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="450" y="200" width="240" height="52" rx="10" fill="#ffffff" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="570" y="231" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">Gymnasium</text>
+
+  <polygon points="570,258 562,270 578,270" fill="#8aa0a6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="450" y="280" width="240" height="52" rx="10" fill="#f0faf9" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="570" y="311" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">ALE</text>
+
+  <polygon points="570,338 562,350 578,350" fill="#0d7377"/>
+
+  <g filter="url(#shadow)">
+    <rect x="450" y="360" width="240" height="52" rx="10" fill="#f0faf9" stroke="#0d7377" stroke-width="2"/>
+  </g>
+  <text x="570" y="391" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#1a2b2e">Atari Pong</text>
+
+  <!-- Match brace label -->
+  <text x="380" y="148" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#0d7377">shared</text>
+  <text x="380" y="228" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#0d7377">shared</text>
+
+  <!-- Role cards -->
+  <g filter="url(#shadow)">
+    <rect x="48" y="440" width="210" height="88" rx="12" fill="#ffffff" stroke="#d5dee0" stroke-width="1"/>
+  </g>
+  <text x="64" y="468" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#0d7377">torch</text>
+  <text x="64" y="492" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">neural network +</text>
+  <text x="64" y="508" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">gradients + optimizer</text>
+
+  <g filter="url(#shadow)">
+    <rect x="275" y="440" width="210" height="88" rx="12" fill="#ffffff" stroke="#d5dee0" stroke-width="1"/>
+  </g>
+  <text x="291" y="468" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#0d7377">gymnasium</text>
+  <text x="291" y="492" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">standard RL</text>
+  <text x="291" y="508" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">environment API</text>
+
+  <g filter="url(#shadow)">
+    <rect x="502" y="440" width="210" height="88" rx="12" fill="#ffffff" stroke="#d5dee0" stroke-width="1"/>
+  </g>
+  <text x="518" y="468" font-family="ui-monospace, Menlo, monospace" font-size="13" font-weight="700" fill="#0d7377">ale-py</text>
+  <text x="518" y="492" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">Atari 2600 emulator</text>
+  <text x="518" y="508" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5a6b70">+ ROMs (e.g. Pong)</text>
+</svg>
