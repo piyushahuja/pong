@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training checkpoints stay on the machine that produced them.
+#
+# pong.py writes pong_policy.pt into the project root every 100 episodes,
+# overwriting it each time. Snapshots worth keeping get copied into
+# checkpoints/ under the convention:
+#
+#     checkpoints/pong-ep<episodes>-reward<running reward>.pt
+#
+# One archived policy is tracked on purpose (the negation below) so a fresh
+# clone — Colab included — can watch a trained agent without training first.
+*.pt
+*.pt copy
+!checkpoints/pong-ep99400-reward+6.96.pt
