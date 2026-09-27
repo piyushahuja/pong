@@ -21,7 +21,7 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
 ```bash
 git clone https://github.com/piyushahuja/pong-pytorch.git
 cd pong-pytorch
-uv sync
+uv sync --locked
 
 uv run play.py --mode human        # watch the tracked policy play
 ```
@@ -29,15 +29,32 @@ uv run play.py --mode human        # watch the tracked policy play
 A trained policy is committed (see [Checkpoints](#checkpoints)), so you can
 watch a competent agent immediately without training one.
 
+`uv sync --locked` installs the exact versions in `uv.lock` and fails rather
+than silently re-resolving if `pyproject.toml` and the lockfile have drifted.
+Use it everywhere except when you are deliberately changing dependencies.
+
 ### In Google Colab
 
-```python
-!git clone https://github.com/piyushahuja/pong-pytorch.git
-%cd pong-pytorch
-!pip install -q gymnasium ale-py matplotlib
+Colab is the one case where the kernel exists before the project does, so
+`uv sync` cannot be the entry point. Each of the four numbered notebooks carries
+a bootstrap cell as its second cell: open the notebook from GitHub, run that
+cell first, and it clones the repo and installs what Colab lacks. It is a no-op
+when you run the same notebook locally.
+
+By default the bootstrap installs only `gymnasium` and `ale-py`, since Colab
+already ships torch and matplotlib. That takes seconds. Set `EXACT_ENV = True`
+in the cell to install the locked environment instead:
+
+```bash
+uv export --locked --no-dev --format requirements.txt -o /tmp/pong-req.txt
+pip install -r /tmp/pong-req.txt
 ```
 
-Then open `Notebook-4-watch-agent.ipynb`, or inline:
+That reproduces the pinned versions exactly, but downloads roughly a gigabyte
+and replaces the torch build Colab ships with. Prefer it when a result needs to
+be reproducible, not when you just want to watch the agent play.
+
+To drive it by hand instead:
 
 ```python
 import replay
@@ -47,6 +64,46 @@ replay.watch(seed=1)        # HTML5 player, no ffmpeg needed
 `--mode human` will not work in Colab — a live pygame window needs an OS window
 that a notebook cannot host. Use `replay.watch()` instead, which renders to
 `rgb_array` and animates the frames inline.
+
+### On someone else's laptop
+
+Same three commands as the local quickstart. Nothing in the repo assumes macOS,
+Apple Silicon, or an absolute path, and `uv.lock` carries per-platform
+resolution, so Linux and Intel Macs resolve from the same lockfile.
+
+### On a GPU server
+
+```bash
+git clone https://github.com/piyushahuja/pong-pytorch.git
+cd pong-pytorch
+uv sync --locked
+uv run pong.py
+```
+
+The repo owns Python, torch, Gymnasium, ALE and the code. The host owns the
+NVIDIA driver, the GPU and the OS — different layers, and you should not need
+to install a CUDA toolkit by hand for the torch wheels pinned here.
+
+**It will still train on CPU.** `pong.py` and `play.py` both hardcode
+`torch.device("cpu")`; there is no device auto-selection yet. On this network
+that is a defensible default — 1.28M parameters stepped one frame at a time is
+dominated by per-step overhead, not matrix multiplication, so a GPU often loses
+to CPU here. But it means `nvidia-smi` will look idle, and that is expected
+rather than a misconfiguration. To use the GPU, change `device` in both files.
+
+## Versions
+
+| File | Says |
+|---|---|
+| `.python-version` | `3.12` — the interpreter uv provisions |
+| `pyproject.toml` | `requires-python = ">=3.12,<3.13"` |
+| `uv.lock` | the exact resolved versions, one per package |
+
+The `requires-python` range is deliberately narrow. When it was `>=3.9`, the
+lockfile had to carry parallel resolutions for every supported interpreter —
+three numpy versions, two matplotlib, three contourpy — and which one you got
+depended on your machine. Pinning to 3.12 collapsed `uv.lock` from 4118 lines
+to 1108 and made "the locked environment" mean one thing.
 
 ## Layout
 
@@ -185,6 +242,53 @@ In a notebook, `replay.watch()` returns an HTML5 player built with matplotlib's
 output needs no ffmpeg and survives a kernel restart and `nbconvert`. GitHub
 strips the script, so it will not render in the repo's notebook preview — run
 the cell to see it.
+
+## Working agreement
+
+The repo defines the environment; every machine reconstructs it. That only holds
+if a few things stay true:
+
+1. Clone the repo. Never run `uv init` inside it.
+2. `uv sync --locked` to set up, `uv run ...` to run anything.
+3. Do not `pip install` into the environment. A dependency the project needs is
+   added deliberately with `uv add X`, which updates `pyproject.toml` and
+   `uv.lock` — commit both.
+4. Put experiment differences in arguments, not in copied files. Prefer one
+   script taking `--gamma 0.95` over `pong_gamma95.py`.
+5. Never hardcode an absolute path. Paths are built from the project root, so
+   the repo works at `/content/pong-pytorch` and `/home/you/pong-pytorch`
+   alike.
+6. Commit source, configs and small assets. Not `.venv/`, not datasets, not
+   routine checkpoints or videos.
+7. Record the seed, the git commit and the configuration alongside any result
+   you intend to report. "gamma 0.99 did better" is not recoverable six months
+   later without them.
+8. On Colab, run the bootstrap cell first.
+
+The split, stated once:
+
+| Owned by the repo | Owned by the machine |
+|---|---|
+| Python version (`.python-version`) | OS |
+| dependencies (`pyproject.toml`, `uv.lock`) | NVIDIA driver |
+| research code | GPU model |
+| hyperparameters | RAM |
+| seeds | the transient `.venv/` |
+
+## Known gaps
+
+Worth knowing before handing this to someone:
+
+- **`Policy` is defined twice**, in `pong.py` and again in `play.py`, because
+  importing `pong.py` would start a training run — its loop sits at module
+  level. `pong.ipynb` defines a third with `H = 300` where the scripts use
+  `H = 200`. Three definitions is two too many, and the notebook's already
+  disagrees.
+- **No device selection.** Both scripts pin CPU; see the GPU server section.
+- **No tests and no CI.** `test_pong.py` is a scratch script that opens a render
+  window and loops, not something a CI runner can execute.
+- **No provenance recording.** A run saves weights, episode count and running
+  reward, but not the git commit, seed, or configuration that produced them.
 
 ## Implementation notes
 
