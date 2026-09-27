@@ -810,7 +810,7 @@ wheels = [
 [[package]]
 name = "pong-pytorch"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "ale-py" },
     { name = "gymnasium" },

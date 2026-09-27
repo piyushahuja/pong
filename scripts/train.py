@@ -1,10 +1,10 @@
 """
 Train a Pong policy with REINFORCE.
 
-    uv run pong.py                          # baseline settings
-    uv run pong.py --config gamma-090       # a config from configs/
-    uv run pong.py --gamma 0.95 --seed 3    # or override directly
-    uv run pong.py --resume                 # continue the newest checkpoint
+    uv run scripts/train.py                          # baseline settings
+    uv run scripts/train.py --config gamma-090       # a config from configs/
+    uv run scripts/train.py --gamma 0.95 --seed 3    # or override directly
+    uv run scripts/train.py --resume                 # continue the newest checkpoint
 
 Every run writes its own directory under outputs/ holding the settings, the
 provenance (commit, seed, device, versions), per-episode metrics and the
@@ -16,15 +16,11 @@ from pathlib import Path
 
 import torch
 
-import experiment
-from agent import (
-    D,
-    Policy,
-    default_checkpoint,
-    get_device,
-    make_env,
-    preprocess,
-)
+from pong import experiment
+from pong.checkpoints import default_checkpoint
+from pong.env import make_env, preprocess
+from pong.model import D, Policy
+from pong.utils import get_device
 
 
 # ------------------------------------------------------------
@@ -34,8 +30,8 @@ from agent import (
 # file overrides them and a command-line flag overrides that, so an
 # experiment is this code plus a configuration rather than a copy of it.
 #
-# Network shape (D) and the environment settings live in agent.py, because
-# play.py and every checkpoint have to agree with them.
+# Network shape (D) and the environment settings live in the pong
+# package, because play.py and every checkpoint must agree with them.
 # ------------------------------------------------------------
 
 DEFAULTS = {
@@ -91,7 +87,7 @@ MAX_EPISODES = args.episodes
 # Device
 #
 # Defaults to CPU; --device auto or PONG_DEVICE=auto to override. See
-# get_device() in agent.py for why CPU is the default for a network
+# pong.utils.get_device() for why CPU is the default for a network
 # this small.
 # ------------------------------------------------------------
 

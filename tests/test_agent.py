@@ -14,7 +14,9 @@ import numpy as np
 import pytest
 import torch
 
-import agent
+import pong as agent
+import pong as pong_pkg
+from pong import checkpoints as agent_checkpoints
 
 
 def test_shape_constants():
@@ -127,9 +129,9 @@ def test_checkpoint_round_trip(tmp_path, monkeypatch):
 
 def test_default_checkpoint_resolution_order(tmp_path, monkeypatch):
     """Paths come from the project root, so point the constants at a fake one."""
-    monkeypatch.setattr(agent, "CHECKPOINT", tmp_path / "pong_policy.pt")
-    monkeypatch.setattr(agent, "CHECKPOINT_DIR", tmp_path / "checkpoints")
-    monkeypatch.setattr(agent, "OUTPUT_DIR", tmp_path / "outputs")
+    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT", tmp_path / "pong_policy.pt")
+    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT_DIR", tmp_path / "checkpoints")
+    monkeypatch.setattr(agent_checkpoints, "OUTPUT_DIR", tmp_path / "outputs")
 
     with pytest.raises(FileNotFoundError):
         agent.default_checkpoint()
@@ -153,9 +155,9 @@ def test_default_checkpoint_resolution_order(tmp_path, monkeypatch):
 
 
 def test_default_checkpoint_picks_newest_run(tmp_path, monkeypatch):
-    monkeypatch.setattr(agent, "CHECKPOINT", tmp_path / "absent.pt")
-    monkeypatch.setattr(agent, "CHECKPOINT_DIR", tmp_path / "absent")
-    monkeypatch.setattr(agent, "OUTPUT_DIR", tmp_path / "outputs")
+    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT", tmp_path / "absent.pt")
+    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT_DIR", tmp_path / "absent")
+    monkeypatch.setattr(agent_checkpoints, "OUTPUT_DIR", tmp_path / "outputs")
 
     for name, mtime in [("older", 1_000_000), ("newer", 2_000_000)]:
         run = tmp_path / "outputs" / name
@@ -169,17 +171,18 @@ def test_default_checkpoint_picks_newest_run(tmp_path, monkeypatch):
 
 def test_paths_are_root_relative_not_cwd_relative(tmp_path, monkeypatch):
     """Running from a subdirectory must not change which files are found."""
-    before = agent.CHECKPOINT_DIR
+    before = agent_checkpoints.CHECKPOINT_DIR
     monkeypatch.chdir(tmp_path)
-    assert agent.CHECKPOINT_DIR == before
-    assert agent.CHECKPOINT_DIR.is_absolute()
+    assert agent_checkpoints.CHECKPOINT_DIR == before
+    assert agent_checkpoints.CHECKPOINT_DIR.is_absolute()
 
 
-def test_play_reexports_match_agent():
-    """The notebooks import these from play; they must be the same objects."""
-    import play
+def test_package_surface_is_the_submodules():
+    """`import pong` must expose the same objects the submodules define."""
+    from pong import checkpoints, env, evaluate, model
 
-    assert play.Policy is agent.Policy
-    assert play.preprocess is agent.preprocess
-    assert play.make_env is agent.make_env
-    assert play.load_policy is agent.load_policy
+    assert pong_pkg.Policy is model.Policy
+    assert pong_pkg.preprocess is env.preprocess
+    assert pong_pkg.make_env is env.make_env
+    assert pong_pkg.load_policy is checkpoints.load_policy
+    assert pong_pkg.rollout is evaluate.rollout

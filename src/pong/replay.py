@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from IPython.display import HTML
 
-import play
+from pong import checkpoints, env as pong_env, evaluate
 
 
 def watch(
@@ -27,10 +27,10 @@ def watch(
     fps=30,
 ):
     """Play one episode and return an inline HTML5 animation."""
-    policy = play.load_policy(checkpoint) if checkpoint else play.load_policy()
-    env = play.make_env("rgb_array")
+    policy = checkpoints.load_policy(checkpoint)
+    env = pong_env.make_env("rgb_array")
     try:
-        us, them, frames, probs = play.rollout(
+        us, them, frames, probs = evaluate.rollout(
             policy, env,
             greedy=greedy,
             seed=seed,

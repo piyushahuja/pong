@@ -25,6 +25,14 @@ jobs:
       - name: Run tests
         run: uv run pytest -q
 
+      # The entry points must at least import and parse their arguments; a
+      # broken import in scripts/ would otherwise only show up for a mentee.
+      - name: Check entry points
+        run: |
+          uv run scripts/train.py --help > /dev/null
+          uv run scripts/play.py --help > /dev/null
+          uv run python -c "import pong; print(pong.PROJECT_ROOT)"
+
       # The notebooks are the teaching material; malformed JSON or a missing
       # cell id breaks them silently in Colab.
       - name: Validate notebooks
@@ -32,7 +40,7 @@ jobs:
           uv run python - <<'PY'
           import glob, nbformat, warnings
           warnings.simplefilter("error")
-          for path in sorted(glob.glob("*.ipynb")):
+          for path in sorted(glob.glob("notebooks/*.ipynb")):
               nbformat.validate(nbformat.read(path, as_version=4))
               print(f"{path}: ok")
           PY

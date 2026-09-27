@@ -23,29 +23,7 @@ import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
 
-
-# ------------------------------------------------------------
-# Project root
-#
-# Paths must not depend on where you happen to have cd'd, and must not
-# encode anyone's home directory. The root is the directory containing
-# pyproject.toml, found by walking up from this file, so the repo works
-# at /content/pong-pytorch and /home/you/pong-pytorch alike.
-# ------------------------------------------------------------
-
-def find_project_root(start=None):
-    here = Path(start or __file__).resolve()
-    for candidate in [here, *here.parents]:
-        if (candidate / "pyproject.toml").is_file():
-            return candidate
-    # Installed or vendored somewhere without the marker: fall back to CWD
-    # rather than guessing.
-    return Path.cwd()
-
-
-PROJECT_ROOT = find_project_root()
-CONFIG_DIR = PROJECT_ROOT / "configs"
-OUTPUT_DIR = PROJECT_ROOT / "outputs"
+from pong.utils import CONFIG_DIR, OUTPUT_DIR, PROJECT_ROOT
 
 
 # ------------------------------------------------------------

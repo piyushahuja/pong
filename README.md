@@ -14,6 +14,17 @@ Two weight matrices, 1,280,200 parameters, no convolutions:
 6400 (80x80 difference image) --> 200 (ReLU) --> 1 (sigmoid) --> P(move up)
 ```
 
+**Contents.** [Quickstart](#quickstart) ·
+[Layout](#layout) ·
+[Checkpoints](#checkpoints) ·
+[Training](#training) ·
+[Experiments](#experiments) ·
+[Watching a trained agent](#watching-a-trained-agent) ·
+[Contributing](#contributing) ·
+[How this repo got here](#how-this-repo-got-here) ·
+[Known gaps](#known-gaps) ·
+[Implementation notes](#implementation-notes)
+
 ## Quickstart
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
@@ -23,7 +34,7 @@ git clone https://github.com/piyushahuja/pong-pytorch.git
 cd pong-pytorch
 uv sync --locked
 
-uv run play.py --mode human        # watch the tracked policy play
+uv run scripts/play.py --mode human        # watch the tracked policy play
 ```
 
 A trained policy is committed (see [Checkpoints](#checkpoints)), so you can
@@ -36,7 +47,7 @@ Use it everywhere except when you are deliberately changing dependencies.
 ### In Google Colab
 
 Colab is the one case where the kernel exists before the project does, so
-`uv sync` cannot be the entry point. Each of the four numbered notebooks carries
+`uv sync` cannot be the entry point. Each notebook in `notebooks/` carries
 a bootstrap cell as its second cell: open the notebook from GitHub, run that
 cell first, and it clones the repo and installs what Colab lacks. It is a no-op
 when you run the same notebook locally.
@@ -57,7 +68,7 @@ be reproducible, not when you just want to watch the agent play.
 To drive it by hand instead:
 
 ```python
-import replay
+from pong import replay
 replay.watch(seed=1)        # HTML5 player, no ffmpeg needed
 ```
 
@@ -77,7 +88,7 @@ resolution, so Linux and Intel Macs resolve from the same lockfile.
 git clone https://github.com/piyushahuja/pong-pytorch.git
 cd pong-pytorch
 uv sync --locked
-uv run pong.py
+uv run scripts/train.py
 ```
 
 The repo owns Python, torch, Gymnasium, ALE and the code. The host owns the
@@ -87,8 +98,8 @@ to install a CUDA toolkit by hand for the torch wheels pinned here.
 **It defaults to CPU, on purpose.** Set `PONG_DEVICE` to change it:
 
 ```bash
-PONG_DEVICE=cuda uv run pong.py     # explicit
-PONG_DEVICE=auto uv run pong.py     # cuda, else mps, else cpu
+PONG_DEVICE=cuda uv run scripts/train.py     # explicit
+PONG_DEVICE=auto uv run scripts/train.py     # cuda, else mps, else cpu
 ```
 
 CPU is the default because this network is 1.28M parameters stepped one frame
@@ -114,25 +125,47 @@ to 1108 and made "the locked environment" mean one thing.
 
 ## Layout
 
-| Path | What it is |
-|---|---|
-| `agent.py` | `Policy`, `preprocess`, `make_env`, `get_device`, checkpoint loading. The definitions everything else shares. |
-| `experiment.py` | Configs, run directories, provenance. Knows nothing about Pong. |
-| `pong.py` | The training loop. Runs until you stop it. |
-| `play.py` | Load a checkpoint and play: live window or headless frame capture. |
-| `replay.py` | `watch()` — an inline HTML5 player for a single episode. |
-| `pong.ipynb` | Exploratory notebook version of `pong.py`, kept for its narrative. |
-| `Notebook-1-setup.ipynb` | uv, ALE, Gymnasium; what `reset()` and `step()` return. |
-| `Notebook-2-neural-network.ipynb` | Defining a net with `torch.nn`; tensor shapes and batch dims. |
-| `Notebook-3-train-step.ipynb` | probability → Bernoulli sample → log-prob → loss → step. |
-| `Notebook-4-watch-agent.ipynb` | What a checkpoint holds; loading it; replaying an episode. |
-| `checkpoints/` | Archived policies. One is tracked; the rest stay local. |
-| `explore_env.py` | Scratch script: drives the env with random actions. |
-| `configs/` | One TOML file per experiment. `baseline.toml` is what the tracked policy used. |
-| `outputs/` | One directory per run: settings, provenance, metrics, checkpoint. Gitignored. |
-| `tests/` | Fast contract tests — no training. `uv run pytest`. |
-| `main.py` | uv's generated entry-point stub; nothing depends on it. |
-| `assets/` | Explanatory figures for the notebooks. |
+```
+pong-pytorch/
+├── pyproject.toml          dependencies, and the pong package
+├── uv.lock                 the exact resolved environment
+├── .python-version         3.12
+│
+├── src/pong/               the library: imported, never copied
+│   ├── model.py            Policy — the network, defined once
+│   ├── env.py              make_env, preprocess, and the settings a
+│   │                       checkpoint is tied to
+│   ├── checkpoints.py      finding and loading saved policies
+│   ├── evaluate.py         rollout: playing without training
+│   ├── experiment.py       configs, run directories, provenance
+│   ├── replay.py           watch() — inline animation for notebooks
+│   └── utils.py            project root, and device selection
+│
+├── scripts/                entry points: argument parsing, then the library
+│   ├── train.py            the training loop
+│   ├── play.py             watch a trained policy
+│   └── explore_env.py      scratch: drives the env with random actions
+│
+├── notebooks/
+│   ├── 01_setup.ipynb              uv, ALE, Gymnasium; reset() and step()
+│   ├── 02_neural_network.ipynb     torch.nn, tensor shapes, batch dims
+│   ├── 03_train_step.ipynb         probability → sample → log-prob → step
+│   ├── 04_watch_agent.ipynb        checkpoints, loading, replaying
+│   └── pong_exploration.ipynb      the original working notebook
+│
+├── configs/                one TOML file per experiment
+│   ├── baseline.toml       what the tracked policy was trained with
+│   └── gamma-090.toml      …and deviations from it
+│
+├── tests/                  fast contract tests, no training
+├── checkpoints/            archived policies; one tracked, rest local
+├── outputs/                one directory per run (gitignored)
+└── assets/                 figures for the notebooks
+```
+
+The split is `src/` versus `scripts/`: anything a notebook or another script
+might need lives in the package and is imported; the scripts only parse
+arguments and call it. Nothing is ever defined twice.
 
 Notebooks 1–3 read without executing anything; the figures are explanatory.
 
@@ -193,7 +226,7 @@ the working directory, so running from a subdirectory finds the same files.
 ## Training
 
 ```bash
-uv run pong.py
+uv run scripts/train.py
 ```
 
 Prints per-episode reward and a running mean, writes a checkpoint every 100
@@ -223,18 +256,18 @@ An experiment is this code plus a configuration, never a copy of the code.
 Comparing three discount factors is three invocations, not three files:
 
 ```bash
-uv run pong.py --config gamma-090
-uv run pong.py --config gamma-095
-uv run pong.py --config baseline
+uv run scripts/train.py --config gamma-090
+uv run scripts/train.py --config gamma-095
+uv run scripts/train.py --config baseline
 ```
 
 Settings come from three layers, each overriding the one before: the defaults
 in `pong.py`, then a TOML file in `configs/`, then command-line flags.
 
 ```bash
-uv run pong.py --gamma 0.95 --seed 3          # no config file needed
-uv run pong.py --config gamma-090 --seed 3    # config, with one override
-uv run pong.py --help                         # every setting is a flag
+uv run scripts/train.py --gamma 0.95 --seed 3          # no config file needed
+uv run scripts/train.py --config gamma-090 --seed 3    # config, with one override
+uv run scripts/train.py --help                         # every setting is a flag
 ```
 
 A setting a config names but the code does not know is an error, not something
@@ -296,9 +329,9 @@ everything since the last periodic save. Interrupting before the first episode
 finishes discards the directory instead of leaving one that claims a result.
 
 ```bash
-uv run pong.py --resume                        # continue the newest checkpoint
-uv run pong.py --resume-from outputs/<run>/policy.pt
-uv run pong.py --episodes 500                  # stop after N episodes
+uv run scripts/train.py --resume                        # continue the newest checkpoint
+uv run scripts/train.py --resume-from outputs/<run>/policy.pt
+uv run scripts/train.py --episodes 500                  # stop after N episodes
 ```
 
 Resuming is explicit and off by default. Silently continuing from whatever
@@ -310,11 +343,11 @@ weight shapes cannot match.
 ## Watching a trained agent
 
 ```bash
-uv run play.py --mode human                  # argmax, live window
-uv run play.py --mode human --sample         # sample, as it was trained
-uv run play.py --mode human --episodes 5 --seed 1
-uv run play.py --mode human --sticky 0.0     # no action-repeat noise
-uv run play.py --checkpoint path/to/another.pt
+uv run scripts/play.py --mode human                  # argmax, live window
+uv run scripts/play.py --mode human --sample         # sample, as it was trained
+uv run scripts/play.py --mode human --episodes 5 --seed 1
+uv run scripts/play.py --mode human --sticky 0.0     # no action-repeat noise
+uv run scripts/play.py --checkpoint path/to/another.pt
 ```
 
 `--sticky` sets `repeat_action_probability`. The default `0.25` reproduces
@@ -331,30 +364,24 @@ output needs no ffmpeg and survives a kernel restart and `nbconvert`. GitHub
 strips the script, so it will not render in the repo's notebook preview — run
 the cell to see it.
 
-## Working agreement
+## Contributing
 
-The repo defines the environment; every machine reconstructs it. That only holds
-if a few things stay true:
+Full workflow in [CONTRIBUTING.md](CONTRIBUTING.md) — branching, how many seeds
+a claim needs, and what gets a pull request sent back. The short version:
 
 1. Clone the repo. Never run `uv init` inside it.
 2. `uv sync --locked` to set up, `uv run ...` to run anything.
-3. Do not `pip install` into the environment. A dependency the project needs is
-   added deliberately with `uv add X`, which updates `pyproject.toml` and
-   `uv.lock` — commit both.
-4. Put experiment differences in configs or arguments, not in copied files:
-   `--config gamma-090` or `--gamma 0.95`, never `pong_gamma95.py`.
-5. Never hardcode an absolute path. Paths are built from the project root, so
-   the repo works at `/content/pong-pytorch` and `/home/you/pong-pytorch`
-   alike.
-6. Commit source, configs and small assets. Not `.venv/`, not datasets, not
-   routine checkpoints or videos.
-7. Report results from a run directory, not from terminal scrollback. Every run
-   already records the seed, commit, dirty flag and configuration; quote the
-   directory name and that is all recoverable.
+3. Do not `pip install` into the environment. `uv add X` instead, and commit
+   `pyproject.toml` and `uv.lock` together.
+4. Experiment differences go in configs or arguments — `--config gamma-090`,
+   never `pong_gamma95.py`.
+5. Never hardcode a path. Use `pong.PROJECT_ROOT`.
+6. Commit source, configs and small assets. Not `.venv/`, not `outputs/`, not
+   routine checkpoints.
+7. Report results from a run directory, not terminal scrollback. Every run
+   records its seed, commit, dirty flag and settings already.
 8. On Colab, run the bootstrap cell first.
-9. Run `uv run pytest` before pushing. It takes about a second and CI runs the
-   same thing, plus a `uv sync --locked` check that catches a lockfile you
-   forgot to commit.
+9. `uv run pytest` before pushing. About a second, and CI runs the same thing.
 
 The split, stated once:
 
@@ -366,20 +393,173 @@ The split, stated once:
 | hyperparameters | RAM |
 | seeds | the transient `.venv/` |
 
+## How this repo got here
+
+This started as a working single-file experiment: `pong.py` trained, a notebook
+explored, and everything lived in one commit called `updated`. That is the right
+shape for finding out whether an idea works. It is the wrong shape for handing
+to several people who will each change something and report a number back.
+
+Every change below was made for a reason, and the reasons are worth more than
+the changes. Roughly in order:
+
+### Git holds the specification, not the machine
+
+**One commit called `updated` became a described history.** A diff shows what
+changed; only a commit message can say why. If in six months a hyperparameter
+looks arbitrary, the message is the only place that can tell you it was chosen
+to match a reference implementation.
+
+**Checkpoints came out of git.** Two 10MB `.pt` files were committed. Binaries
+in git history are permanent — they stay in the pack forever, they do not diff,
+and every clone pays for them. But a mentee with a fresh clone also cannot watch
+an agent play if training first costs days of CPU. So: `*.pt` is ignored, and
+exactly one archived policy is tracked by a negation in `.gitignore`. Named
+`pong-ep99400-reward+6.96.pt`, because a name that says "which one is this" is
+worth more than a name that says `latest`.
+
+A detail worth knowing, because it bit us: `git status` reported the repo clean
+while the committed checkpoint differed from the one on disk. Git's racy-timestamp
+cache skips re-hashing a file whose size and mtime second match the index, and a
+training run had written it in the same second as the commit. The checkpoint in
+git was two saves stale and nothing said so.
+
+**`requires-python` narrowed from `>=3.9` to `>=3.12,<3.13`.** With the wide
+range, `uv.lock` had to carry a resolution for every interpreter in it — three
+numpy versions, two matplotlib, three contourpy — and which you got depended on
+your machine. "The locked environment" did not mean one thing. Narrowing
+collapsed the lockfile from 4118 lines to 1108.
+
+### One definition of everything
+
+**`Policy` was defined twice, and had already drifted.** Once in `pong.py`, once
+in `play.py` — and the copy in `play.py` was missing the weight initialisation.
+It happened to work, because loading a checkpoint overwrites the weights anyway,
+but it is the kind of thing that only works by accident. A checkpoint is
+meaningless without the exact shape and preprocessing it was trained against, so
+two copies is a correctness problem, not untidiness.
+
+The cause was structural: `pong.py`'s training loop runs at module level, so
+`import pong` would start training, so `play.py` could not import from it and
+copied instead. The fix is a library — `src/pong/` — that both import.
+
+**Device selection moved into one function, and defaults to CPU.** This is the
+one place the repo deliberately does the opposite of the usual advice, which is
+to auto-detect and prefer a GPU. This network is 1.28M parameters stepped one
+frame at a time; per-step overhead dominates and a GPU generally loses. Every
+checkpoint so far was trained on CPU, so a resumed run staying on CPU is also
+numerically consistent with what it resumes. `PONG_DEVICE=auto` or
+`--device cuda` opts in, so a GPU server needs no code edit — it just does not
+get one silently.
+
+**Paths resolve against the project root, not the working directory.** Not
+theoretical: moving the notebooks into `notebooks/` broke a cell that did
+`Path("assets") / "_demo.pt"`, because the notebook was no longer at the root.
+`pong.PROJECT_ROOT` is found by walking up to `pyproject.toml`, so the repo works
+at `/content/pong-pytorch` and `/home/you/pong-pytorch` without edits.
+
+### A run you can believe
+
+**Training can resume.** It saved checkpoints but never read them, so an
+interrupted run lost everything — and the run in progress was six days of CPU
+into 99,400 episodes. The resume is exact rather than approximate, and that
+falls out of where saves land: gradients step every 10 episodes, checkpoints
+write every 100, so a save always happens just after `optimizer.zero_grad()`.
+No partially accumulated gradient is ever in flight, which is why weights,
+optimizer state, episode count and running reward are the whole picture.
+
+**Resuming is explicit.** It used to pick up `pong_policy.pt` automatically.
+That is convenient until you run `--gamma 0.90` and silently continue from a
+policy trained at `0.99`, then report the result. `--resume` or
+`--resume-from PATH`, or you start fresh.
+
+**A run always leaves its checkpoint.** Before, a run shorter than `save_every`
+produced no policy at all, and Ctrl+C discarded up to 99 episodes. The save is
+now in a `finally`, so stopping a run costs you the current episode and nothing
+else.
+
+**An experiment became a configuration.** Comparing `gamma=0.90` against `0.99`
+meant editing the training script, which means the comparison is between two
+states of a file nobody recorded. Now it is `--config gamma-090`, and settings
+layer defaults → config file → command line. A key a config names but the code
+does not know is a startup error, so `gama = 0.9` fails instead of silently
+running at `0.99`.
+
+Configs are TOML rather than YAML, which departs from the plan this followed:
+`tomllib` is in the standard library on the pinned 3.12, and adding a dependency
+to read four numbers is a poor trade in a repo whose point is a reproducible
+environment.
+
+**Every run records what produced it.** `config.json`, `metadata.json`,
+`metrics.csv` and the checkpoint, in `outputs/<timestamp>-<name>/`, written
+before training starts so an interrupted run still says what it was trying.
+Two details beyond the obvious:
+
+- `config.json` records *where each value came from* — `"gamma": "config"`,
+  `"seed": "cli"`, `"hidden": "default"`. Reading an old run back, the first
+  question is "which of these did I actually set?"
+- `metadata.json` records `git_dirty` next to `git_commit`. A run made with
+  uncommitted edits is not reproducible from that commit, and recording the
+  fact is the difference between a usable result and a misleading one.
+
+**Seeds reproduce.** `--seed` seeds torch and the first `env.reset()` — only the
+first, because seeding every reset makes each episode identical, which is one
+game on a loop rather than reproducibility. Two runs at the same seed produce
+identical metrics down to the loss.
+
+### Things that can be checked automatically
+
+**Tests, and CI that runs them.** Not tests of training, which would be slow and
+flaky, but of the contracts a checkpoint depends on: the preprocessing grid and
+binarisation, the 6400-vector shape, parameter count, the environment's
+frameskip and sticky-action settings, device resolution, checkpoint round-trip.
+CI also runs `uv sync --locked`, which fails if `pyproject.toml` and `uv.lock`
+disagree — the most common way one person's branch breaks everyone else's
+environment.
+
+`test_pong.py` was renamed `scripts/explore_env.py` in the process. It was never
+a test: it opens a render window and loops 1000 steps, and under that name
+pytest would collect it and hang.
+
+### Shape for more than one person
+
+**`src/` and `scripts/` and `notebooks/`.** The library is imported, the scripts
+are entry points, and the notebooks call the library rather than carrying their
+own copy of it. A notebook that defines its own `Policy` is a fourth
+implementation that nobody will remember to update.
+
+**A contributing guide and a PR template.** The reviewable unit is a branch plus
+a run directory, not a modified notebook attached to a message. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+### What was deliberately left alone
+
+`scripts/train.py` still runs top to bottom at module level, with its numbered
+steps and its comments comparing each one to the reference NumPy version. It
+could be a `train()` function and would then be importable and testable. It is
+not, because reading it in order is the point — it mirrors the notebooks, and a
+mentee should be able to follow it without tracing a call graph. The pieces it
+calls are all in the library and all tested; the loop that strings them together
+is documentation as much as code.
+
 ## Known gaps
 
 Worth knowing before handing this to someone:
 
-- **`pong.ipynb` still defines its own policy with `H = 300`**, where the
-  scripts use 200. `agent.py` is now the single definition for `pong.py`,
-  `play.py` and the numbered notebooks, but the exploratory notebook predates
-  it and has not been folded in.
-- **Metrics are per-run, with nothing to compare them.** Each run writes its own
-  `metrics.csv`; there is no script that reads several runs and reports which
-  configuration won over how many seeds.
-- **`pong.py`'s loop is at module level**, so importing it starts training.
-  That is why the training loop is not itself importable or testable; only the
-  pieces in `agent.py` are.
+- **`notebooks/pong_exploration.ipynb` still defines its own policy with
+  `H = 300`**, where everything else uses 200. It is the original working
+  notebook, kept for its narrative, and has not been folded onto the package.
+  Treat it as a historical document, not a second implementation to trust.
+- **Nothing compares runs.** Each run writes its own `metrics.csv`; there is no
+  script that reads several and reports which configuration won over how many
+  seeds. Until there is, that comparison is done by hand, which is exactly the
+  step where a mistake is easiest.
+- **`scripts/train.py` runs at module level**, so it cannot be imported and the
+  loop itself is not unit-tested. Deliberate: it reads top to bottom in the
+  order the notebooks teach. The pieces it calls are all tested.
+- **Committed notebook outputs.** `02_neural_network.ipynb` and
+  `pong_exploration.ipynb` carry saved outputs, which makes their diffs noisy.
+  Either strip them before committing or decide they are documentation.
 
 ## Implementation notes
 

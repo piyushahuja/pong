@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-import experiment
+from pong import experiment, utils
 
 
 DEFAULTS = {"gamma": 0.99, "hidden": 200, "seed": 0}
@@ -23,13 +23,13 @@ DEFAULTS = {"gamma": 0.99, "hidden": 200, "seed": 0}
 
 def test_project_root_is_the_repo():
     assert (experiment.PROJECT_ROOT / "pyproject.toml").is_file()
-    assert (experiment.PROJECT_ROOT / "agent.py").is_file()
+    assert (experiment.PROJECT_ROOT / "src" / "pong" / "model.py").is_file()
 
 
 def test_project_root_survives_chdir(tmp_path, monkeypatch):
-    before = experiment.find_project_root()
+    before = utils.find_project_root()
     monkeypatch.chdir(tmp_path)
-    assert experiment.find_project_root() == before
+    assert utils.find_project_root() == before
 
 
 # ------------------------------------------------------------
