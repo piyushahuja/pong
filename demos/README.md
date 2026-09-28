@@ -12,7 +12,6 @@ clone.
 | `trajectory-committees.html` | What the units collectively look for. | worksheet 4 |
 | `reinforce-gridworld.html` | A policy learning from nothing, in a gridworld small enough to watch. | worksheet 3 |
 | `weights-as-matrix.html` | A layer read two ways: as neurons with their own weights, or as one matrix whose rows are neurons. | worksheet 2, inline |
-| `two-lineages.html` | Supervised learning and reinforcement learning on the same subject. Lecture material. | lecture 2 |
 
 `three.min.js` is here because `forward-pass.html` and `trajectory-committees.html` need it.
 Keep it alongside them.
