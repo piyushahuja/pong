@@ -17,7 +17,7 @@ import torch
 # Paths must not depend on where you happen to have cd'd, and must not
 # encode anyone's home directory. The root is the directory holding
 # pyproject.toml, found by walking up from this file, so the repo works at
-# /content/pong-pytorch and /home/you/pong-pytorch alike.
+# /content/pong and /home/you/pong alike.
 #
 # The package is installed editable (uv sync), so __file__ points into the
 # checkout rather than site-packages and the walk finds the marker.

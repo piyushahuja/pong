@@ -3,7 +3,7 @@
 Interactive explanations that run in a browser, no install. The worksheets link to them at
 the point where they help, so they stay out of the notebooks and add nothing to their size.
 
-Served at <https://piyushahuja.com/pong-pytorch/demos/>, or open the files directly from a
+Served at <https://piyushahuja.com/pong/demos/>, or open the files directly from a
 clone.
 
 | Demo | What it shows | Linked from |

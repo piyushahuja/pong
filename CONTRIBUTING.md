@@ -7,8 +7,8 @@ directory that says what happened.
 ## Setting up
 
 ```bash
-git clone https://github.com/piyushahuja/pong-pytorch.git
-cd pong-pytorch
+git clone https://github.com/piyushahuja/pong.git
+cd pong
 uv sync --locked
 uv run pytest
 ```

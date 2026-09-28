@@ -29,8 +29,8 @@ Contents. [Quickstart](#quickstart) ·
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
 
 ```bash
-git clone https://github.com/piyushahuja/pong-pytorch.git
-cd pong-pytorch
+git clone https://github.com/piyushahuja/pong.git
+cd pong
 uv sync --locked
 
 uv run scripts/play.py --mode human        # watch the tracked policy play
@@ -53,10 +53,10 @@ when you run the same notebook locally.
 
 Open each worksheet straight from GitHub, and run its bootstrap cell first:
 
-1. [Worksheet 1: setup](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/01_setup.ipynb)
-2. [Worksheet 2: building the network](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/02_neural_network.ipynb)
-3. [Worksheet 3: one training step](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/03_train_step.ipynb)
-4. [Worksheet 4: watching a trained agent](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/04_watch_agent_worksheet.ipynb)
+1. [Worksheet 1: setup](https://colab.research.google.com/github/piyushahuja/pong/blob/main/notebooks/01_setup.ipynb)
+2. [Worksheet 2: building the network](https://colab.research.google.com/github/piyushahuja/pong/blob/main/notebooks/02_neural_network.ipynb)
+3. [Worksheet 3: one training step](https://colab.research.google.com/github/piyushahuja/pong/blob/main/notebooks/03_train_step.ipynb)
+4. [Worksheet 4: watching a trained agent](https://colab.research.google.com/github/piyushahuja/pong/blob/main/notebooks/04_watch_agent_worksheet.ipynb)
 
 Every worksheet stands on its own and ends with a link to the next, so the loop is: finish
 a worksheet, click Next, run all. Nothing depends on the Python state of the previous
@@ -143,8 +143,8 @@ resolution, so Linux and Intel Macs resolve from the same lockfile.
 ### On a GPU server
 
 ```bash
-git clone https://github.com/piyushahuja/pong-pytorch.git
-cd pong-pytorch
+git clone https://github.com/piyushahuja/pong.git
+cd pong
 uv sync --locked
 uv run scripts/train.py
 ```
@@ -187,7 +187,7 @@ still pins 3.12 as the interpreter uv provisions locally.
 ## Layout
 
 ```
-pong-pytorch/
+pong/
 ├── pyproject.toml          dependencies, and the pong package
 ├── uv.lock                 the exact resolved environment
 ├── .python-version         3.12
@@ -456,12 +456,12 @@ Start here if you have been handed this repo to work on. The detail is in
 You do not have write access to this repo, so work from a fork.
 
 ```bash
-gh repo fork piyushahuja/pong-pytorch --clone
-cd pong-pytorch
+gh repo fork piyushahuja/pong --clone
+cd pong
 
 git remote -v                    # origin should be your fork
 # gh usually adds the parent as `upstream`. If `git remote -v` does not show it:
-git remote add upstream https://github.com/piyushahuja/pong-pytorch.git
+git remote add upstream https://github.com/piyushahuja/pong.git
 
 uv sync --locked                 # installs Python 3.12, the pinned deps, and the pong package
 uv run pytest                    # ~1s. If this passes, your environment is correct.
