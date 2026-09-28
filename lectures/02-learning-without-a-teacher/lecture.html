@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lecture 2 — Learning Without a Teacher</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/white.min.css">
+<style>
+  /* ── Global ── */
+  :root {
+    --accent: #1a1a1a;
+    --muted: #666;
+    --link: #2563eb;
+    --soft: #f5f5f5;
+    --border: #e5e5e5;
+    --gold: #c8a96e;
+    --blue: #6e9ec8;
+    --green: #7ec87e;
+  }
+
+  .reveal {
+    font-family: 'Georgia', serif;
+    font-size: 22px;
+    color: #1a1a1a;
+  }
+
+  .reveal h1, .reveal h2, .reveal h3 {
+    font-family: 'Georgia', serif;
+    color: #1a1a1a;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    text-transform: none;
+  }
+
+  .reveal h1 { font-size: 2.4em; line-height: 1.15; }
+  .reveal h2 { font-size: 1.6em; margin-bottom: 0.4em; }
+  .reveal h3 { font-size: 1.15em; color: var(--muted); font-style: italic; margin-bottom: 0.6em; }
+
+  .reveal p { line-height: 1.7; margin: 0.5em 0; }
+  .reveal ul { line-height: 1.9; }
+
+  .reveal a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .reveal a:hover { border-color: var(--link); }
+
+  /* ── Layout helpers ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2em;
+    align-items: center;
+  }
+
+  .three-col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.4em;
+    align-items: start;
+  }
+
+  .card {
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1em 1.4em;
+  }
+
+  .label {
+    display: inline-block;
+    font-size: 0.65em;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.15em 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .year {
+    font-size: 3em;
+    font-weight: bold;
+    color: var(--border);
+    font-family: 'Courier New', monospace;
+    letter-spacing: -0.05em;
+  }
+
+  .pullquote {
+    font-size: 1.3em;
+    font-style: italic;
+    color: var(--muted);
+    border-left: 3px solid #ddd;
+    padding-left: 1em;
+    margin: 0.5em 0;
+  }
+
+  .sidenote {
+    display: block;
+    text-align: left;
+    font-size: 0.62em;
+    color: var(--muted);
+    line-height: 1.65;
+    border-left: 2px solid var(--border);
+    padding-left: 1em;
+    margin-top: 1em;
+  }
+
+  .formula {
+    display: inline-block;
+    font-family: 'Georgia', serif;
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.35em 0.8em;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .formula em { font-style: italic; }
+  .formula sub { font-size: 0.7em; }
+
+  .centered { text-align: center; }
+
+  .demo-link {
+    display: inline-block;
+    margin: 0.3em 0;
+    padding: 0.4em 1em;
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--link);
+    font-size: 0.85em;
+    font-family: 'Courier New', monospace;
+  }
+  .demo-link:hover { background: #ebebeb; border-color: #ccc; }
+
+  /* ── Comparison table ── */
+  .cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72em;
+    text-align: left;
+  }
+  .cmp th {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: normal;
+    border-bottom: 1px solid var(--border);
+    padding: 0.5em 0.7em;
+  }
+  .cmp td {
+    padding: 0.62em 0.7em;
+    border-bottom: 1px solid #f0f0f0;
+    line-height: 1.5;
+    vertical-align: top;
+  }
+  .cmp td:first-child { color: var(--muted); font-style: italic; width: 22%; }
+
+  /* ── Placeholder for graphics still to be built ── */
+  .viz-placeholder {
+    border: 1px dashed #c9c9c9;
+    border-radius: 8px;
+    background: repeating-linear-gradient(45deg, #fafafa, #fafafa 10px, #f4f4f4 10px, #f4f4f4 20px);
+    padding: 1.6em 1.4em;
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.72em;
+    line-height: 1.6;
+  }
+  .viz-placeholder .tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #b08d4a;
+    display: block;
+    margin-bottom: 0.5em;
+  }
+
+  /* ── ASCII / pipeline blocks ── */
+  pre.ascii {
+    font-family: 'Courier New', monospace;
+    font-size: 0.5em;
+    line-height: 1.5;
+    color: #333;
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1em 1.2em;
+    text-align: left;
+    overflow: visible;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  /* ── Full-slide video ── */
+  .video-slide video {
+    width: 100%;
+    max-height: 78vh;
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+
+  /* ── Full-slide image ── */
+  .img-slide img {
+    max-width: 90%;
+    max-height: 72vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  }
+
+  /* ── Scroll mode ── */
+  #scroll-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 9999;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    color: var(--muted);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  #scroll-toggle:hover { background: var(--soft); }
+
+  /* ── Scroll view ── */
+  #scroll-view {
+    display: none;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px 120px;
+    font-family: 'Georgia', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #1a1a1a;
+  }
+
+  #scroll-view h1 { font-size: 2em; margin-bottom: 0.2em; font-weight: normal; }
+  #scroll-view h2 { font-size: 1.3em; margin-top: 2.5em; font-weight: normal; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+  #scroll-view h3 { font-size: 1em; font-style: italic; color: var(--muted); margin-top: 1.5em; }
+  #scroll-view p { margin: 0.8em 0; }
+  #scroll-view a { color: var(--link); }
+  #scroll-view video { width: 100%; margin: 1.5em 0; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+  #scroll-view img { width: 100%; margin: 1.5em 0; border-radius: 4px; }
+  #scroll-view pre { font-family: 'Courier New', monospace; font-size: 0.72em; line-height: 1.5; background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 1em; overflow-x: auto; }
+  #scroll-view .pullquote { font-style: italic; color: var(--muted); border-left: 3px solid #ddd; padding-left: 1em; margin: 1.5em 0; }
+  #scroll-view .demo-link { display: inline-block; margin: 0.3em 0.3em 0.3em 0; padding: 0.4em 1em; background: var(--soft); border: 1px solid var(--border); border-radius: 5px; color: var(--link); font-size: 0.85em; font-family: monospace; }
+
+  /* hide reveal when scroll active */
+  body.scroll-mode .reveal-viewport { display: none; }
+  body.scroll-mode #scroll-view { display: block; }
+  body.scroll-mode #scroll-toggle { top: 14px; }
+</style>
+</head>
+<body>
+
+<!-- Toggle button -->
+<button id="scroll-toggle" onclick="toggleMode()">scroll view</button>
+
+<!-- ════════════════════════════════════════════
+     REVEAL.JS SLIDES
+════════════════════════════════════════════ -->
+<div class="reveal">
+<div class="slides">
+
+  <!-- ══ SLIDE 01 · Title — the same question, renumbered ══ -->
+  <section>
+    <div style="padding: 2em 0; max-width: 780px; margin: 0 auto;">
+      <div class="label">Lecture 2</div>
+      <h1 style="font-size:2em; line-height:1.25; margin-top:0.5em;">There are artifacts you can build out of sand that convert energy into intelligence.</h1>
+      <p style="color:var(--muted); margin-top:1.2em; font-size:1em; font-style:italic;">How is that possible? Where does the intelligence come from?</p>
+    </div>
+    <aside class="notes">
+      Open on exactly the slide they saw first last week, with the number changed. Say nothing for a moment and let them notice. The question has not been retired — last week answered half of it, and the half it answered is the half that was easy. If you want the line: "Same question, second instalment. Last week we found out where the intelligence goes. Today we find out where it comes from." Then straight into the recap — do not start explaining here.
+    </aside>
+  </section>
+
+
+  <!-- ══ SLIDE 02 · Recap — what can these things do ══ -->
+  <section>
+    <div class="label">Recap &middot; Lecture 1</div>
+    <h2>What can these things actually do?</h2>
+    <div class="two-col" style="margin-top:0.9em; gap:2.6em; align-items:start;">
+
+      <div style="font-size:0.74em; line-height:1.5; text-align:left;">
+        <p style="margin:0 0 0.85em;"><strong>Read handwritten digits.</strong><br><span style="color:var(--muted);">Banks were sorting cheques this way by the late 1990s.</span></p>
+        <p style="margin:0 0 0.85em;"><strong>Transcribe and translate speech.</strong><br><span style="color:var(--muted);">Around 2017 machine transcription matched professional human transcribers on conversational English. The same systems now cover more than a hundred languages.</span></p>
+        <p style="margin:0 0 0.85em;"><strong>Find every pedestrian in a frame, thirty times a second.</strong><br><span style="color:var(--muted);">A car cannot avoid someone it has not first located.</span></p>
+        <p style="margin:0;"><strong>Read a CT scan.</strong><br><span style="color:var(--muted);">In lung screening trials these systems have flagged tumours that the reviewing radiologists had missed.</span></p>
+      </div>
+
+      <div style="font-size:0.74em; line-height:1.5; text-align:left;">
+        <p style="margin:0 0 0.85em;"><strong>Play Go better than anyone alive.</strong><br><span style="color:var(--muted);">AlphaGo beat Lee Sedol in 2016. Move 37 of the second game was one no human player would have chosen, and it won.</span></p>
+        <p style="margin:0 0 0.85em;"><strong>Predict how a protein folds from its sequence alone.</strong><br><span style="color:var(--muted);">AlphaFold published structures for roughly 200 million of them. The problem had been open for fifty years.</span></p>
+        <p style="margin:0 0 0.85em;"><strong>Generate a photograph of a person who has never existed.</strong></p>
+        <p style="margin:0;"><strong>Write working software from a description of what it should do.</strong></p>
+      </div>
+
+    </div>
+    <p style="color:var(--muted); font-size:0.72em; margin-top:1.1em; border-top:1px solid var(--border); padding-top:0.7em;">The first of these took decades of specialist engineering. The last two arrived within about five years of one another.</p>
+    <aside class="notes">
+      They have seen this. Do not read it again — that is not what it is doing here. Give them fifteen seconds to re-read it themselves, then ask one question and only one: <strong>which of these could a person have written down the right answer for?</strong> Digits, speech, pedestrians, CT scans — yes, somebody sat down and labelled them. Protein structures — yes, fifty years of crystallography. Then the two that do not belong: playing Go better than anyone alive, and move 37. Nobody wrote that answer down, because nobody had it. Do not resolve the tension. Plant it, tell them we are coming back to it in five minutes, and move on. This is the slide that makes slide 1b land.
+    </aside>
+  </section>
+
+
+  <!-- ══ SLIDE 03 · Recap — universal approximation ══ -->
+  <section>
+    <div class="label">Recap &middot; 1989, George Cybenko</div>
+    <h2 style="margin-bottom:0.5em;">The Universal Approximation Theorem</h2>
+    <div class="pullquote" style="max-width:640px; margin: 0.3em auto 0.7em; font-size:1.05em;">
+      A neural network with just <strong>one hidden layer</strong> can approximate <em>any</em> continuous function — to arbitrary precision.
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:0.5em; font-size:0.58em; margin-top:0.5em;">
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">camera feed<br>+ speed + GPS</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>brake / steer / accelerate</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">self-driving car</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">IMU sensors<br>+ altitude + wind</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>rotor speeds</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">drone stabilisation</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">joint angles<br>+ force sensors</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>torques per joint</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">robot locomotion</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">amino acid<br>sequence</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>3D atomic coordinates</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">protein folding</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">CT scan<br>pixels</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>tumour / not tumour</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">cancer detection</p>
+      </div>
+
+      <div class="card" style="text-align:center; border-color:var(--gold); background:#fdfaf3;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">game board<br>state</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>probability of winning</strong></p>
+        <p style="font-size:0.8em; color:#b08d4a; margin-top:0.4em; border-top:1px solid var(--gold); padding-top:0.4em;">AlphaGo</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">sentence<br>so far</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>next word probabilities</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">large language models</p>
+      </div>
+
+      <div class="card" style="text-align:center;">
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.5em; letter-spacing:0.05em;">INPUT</p>
+        <p style="color:#555; line-height:1.5;">text prompt</p>
+        <p style="font-size:1.1em; margin:0.4em 0; color:#bbb;">↓</p>
+        <p style="font-family:monospace; color:var(--muted); font-size:0.75em; margin-bottom:0.3em; letter-spacing:0.05em;">OUTPUT</p>
+        <p><strong>image pixels</strong></p>
+        <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em; border-top:1px solid var(--border); padding-top:0.4em;">image generation</p>
+      </div>
+
+    </div>
+    <p style="color:var(--muted); font-size:0.72em; margin-top:0.7em; text-align:center; line-height:1.6;">None of these look like &ldquo;curve fitting.&rdquo; All of them are. The theorem covers every one.<br>
+      <span style="color:#b08d4a;">The theorem says the function <em>exists</em>. It says nothing about who supplies its answers &mdash; and for one of these eight, nobody can.</span></p>
+    <aside class="notes">
+      The theorem in one sentence, and they derived the machinery for it last week: anything you can write as a function from inputs to outputs, one hidden layer can approximate. The eight cards are the point, not the theorem. Walk two or three. Then put the weight of the lecture on the sixth card, the AlphaGo one: <em>board state &rarr; probability of winning</em>. Ask it plainly — the theorem promises a network exists that computes that function. Fine. <strong>Now who is going to tell it what the right answer is?</strong> For the CT scan there is a radiologist. For the protein there is a crystallographer. For the winning probability of a Go position there is nobody on earth. That gap — between a function existing and a function being teachable — is the whole of today. Say it once and leave it.
+    </aside>
+  </section>
+
+
+  <!-- ══ SLIDE 04 · Recap — curve fitting, live ══ -->
+  <section>
+    <div class="label">Recap &middot; Play</div>
+    <h2>Curve fitting, live</h2>
+    <p>A neural network learning to fit a 1D function in real time.</p>
+    <p style="font-size:0.8em; color:var(--muted); margin-top:0.4em;">Two minutes, not fifteen. You built this last week &mdash; today it is the thing we are about to take away.</p>
+    <p style="margin-top:1em;">
+      <a class="demo-link" href="https://cs.stanford.edu/people/karpathy/convnetjs/demo/regression.html" target="_blank">1D regression (Karpathy) →</a>
+    </p>
+    <p style="color:var(--muted); font-size:0.85em; margin-top:1.5em;">
+      Watch the loss decrease. Add neurons. Add layers.<br>
+      Notice: it's just curve fitting. That's all "learning" is.
+    </p>
+    <aside class="notes">
+      Two or three minutes only. Last week this was a fifteen-minute exploration; today it is a reminder, and it is a reminder of one specific thing. Run it, let the curve snap onto the points, and then point at the points: <strong>every one of those dots is an answer somebody supplied.</strong> Drag one and the curve follows it — obediently, immediately, to wherever you put it. The network has no opinion about where the dot should be. It has only the dot. That is the sentence to end the recap on, because the next slide takes the dots away.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 05 · WaterWorld — today, in one screen ══ -->
+  <section>
+    <div class="label">Play &middot; and this is today</div>
+    <h2 style="margin-bottom:0.15em;">Now take the dots away</h2>
+
+    <div style="max-width:800px; margin:0.7em auto 0; text-align:left; font-size:0.76em; line-height:1.72;">
+      <p style="margin:0 0 0.8em;">Same idea, one screen later. A network, a few hundred weights, learning to steer. Red things hurt, green things help, and that is the whole of what it is ever told.</p>
+      <p style="margin:0 0 0.9em; color:var(--muted);">Nobody has drawn a single dot for it. There is no curve to fit, because there is no set of right answers to fit one to. It moves, something happens, and it adjusts. Leave it open in a tab for the hour and look again at the end.</p>
+    </div>
+
+    <p style="margin-top:0.7em;">
+      <a class="demo-link" href="https://cs.stanford.edu/people/karpathy/reinforcejs/waterworld.html" target="_blank">WaterWorld &middot; deep Q-learning in the browser &rarr;</a>
+    </p>
+
+    <div style="max-width:780px; margin:1.3em auto 0;">
+      <p style="font-size:0.72em; color:var(--muted); line-height:1.7; border-top:1px solid var(--border); padding-top:0.9em; font-style:italic;">
+        Last week: a machine that learns what we already know, because somebody wrote the answers down first.<br>
+        Today: a machine that learns what nobody knows, because the only thing it is told is whether it went well.
+      </p>
+    </div>
+
+    <aside class="notes">
+      Open this <em>before</em> the lecture starts and leave it running in a tab. It wants ten or fifteen minutes of wall-clock time to get good, so start it early and come back to it at the end — the change over an hour is far more persuasive than anything you can say.
+      Deliver it as the turn, immediately after the regression demo, and lean on the contrast: on the previous slide the curve went wherever you put the dots, obediently and without an opinion. Here there are no dots. Nobody has drawn a correct answer for any frame of this.
+      Say what it is told, because the shortness of the list is the point: red hurts, green helps. Not where to go, not that the red things move, not that there is such a thing as a wall. It works the rest out by moving and seeing what happens.
+      Then read the two lines at the bottom and stop. That is the whole lecture, and everything from here to the end is the machinery underneath it.
+      <strong>Housekeeping:</strong> this one is hosted at Stanford, so it needs the network. If the room's wifi is doubtful, load it before you begin and do not reload it. The gridworld demo later in the deck is local and will always work.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 06 · Where the contract breaks ══ -->
+  <section>
+    <div class="label">The generative question</div>
+    <h2 style="margin-bottom:0.5em;">Where does the contract break?</h2>
+
+    <div style="max-width:830px; margin:0 auto; text-align:left; font-size:0.78em; line-height:1.72;">
+      <p style="margin:0 0 0.7em;">Everything in Lecture 1 ran on one arrangement: <span class="formula" style="font-size:0.85em; padding:0.1em 0.45em;"><em>w</em> &larr; <em>w</em> + &eta;(<em>t</em> &minus; <em>y</em>)<em>x</em></span> &mdash; and <em>t</em>, the right answer, was put there by a person. Sixty thousand images, sixty thousand human decisions.</p>
+      <p style="margin:0 0 0.9em;">So put four problems side by side and ask, for each one, whether a person could write that answer down.</p>
+
+      <table class="cmp" style="font-size:0.95em;">
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a; width:42%;">Is this handwritten digit a 7?</td>
+          <td style="color:var(--green);">Yes. Any human labels it in a second.</td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">Is there a pedestrian in this frame?</td>
+          <td style="color:var(--green);">Yes. Slower, but a person can draw the box.</td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">What is the best move in this Go position?</td>
+          <td style="color:var(--gold);">Nobody knows. The strongest player alive can give you an opinion, and opinions are what we are trying to beat.</td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">How should this robot arm move, right now, to pick up that cup?</td>
+          <td style="color:var(--gold);">Nobody can write it down. You can say whether the cup ended up in the hand.</td>
+        </tr>
+      </table>
+
+      <p class="fragment" style="margin:1em 0 0; background:var(--soft); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:6px; padding:0.8em 1.1em;">
+        For the bottom half of that table there is no <em>t</em>. There is only, much later and much vaguer: <strong>that went well</strong>, or <strong>that went badly</strong>.<br>
+        <span style="font-size:0.92em; color:var(--muted);"><strong>Instructive</strong> feedback hands you the answer. <strong>Evaluative</strong> feedback hands you a verdict &mdash; and for these problems it is the only kind there is.</span>
+      </p>
+    </div>
+
+    <aside class="notes">
+      Open by putting the update rule back up and asking where t comes from. "The dataset." Where does the dataset come from? <em>Pause.</em> A person sat down and wrote it. That is the contract, and it takes thirty seconds now that slide 05 has gone.
+      Then install the vocabulary on the way past — instructive versus evaluative, which is the distinction Sutton and Barto open their textbook on. The version that bites: I mark your essay four out of ten. You now know you did badly. You still do not know what a good essay was, and you do not know which of the twenty things you did was the bad one.
+      Run the table as a poll, row by row, hands up. The first two are unanimous. The third is where the room splits, and the split is the lesson: several students will say "ask a professional", and the answer is that a professional's move is by definition at most professional-strength. If the label is a human opinion, the ceiling is human.
+      The fourth row is the one to linger on, because it is not about games. Nobody can write down the joint angles. Everybody can see whether the cup got picked up. That asymmetry — cheap to evaluate, impossible to specify — is the entire reason reinforcement learning exists.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 07 · 2010 — games, and the reason for RL ══ -->
+  <section>
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left;">
+        <div class="year">2010</div>
+        <div class="label">Hassabis &middot; Legg &middot; Suleyman</div>
+        <h2 style="margin-bottom:0.5em;">Games, and what he thought they were for</h2>
+        <p style="font-size:0.78em; line-height:1.72; margin:0 0 0.7em;">Hassabis was a serious chess player very young, somewhere near the top of his age group in the world. He was learning to program at the same time.</p>
+        <p style="font-size:0.78em; line-height:1.72; margin:0 0 0.7em;">He has described reading a programming book in Foyles at about eleven, then going home and writing an Othello opponent on an Amiga. Othello rather than chess, because chess was more than the machine could manage. The program beat his younger brother.</p>
+        <div class="pullquote" style="font-size:0.88em; margin:0.9em 0 0.8em;">What is my brain doing when I solve these problems, and could a machine do the same thing?</div>
+        <p style="font-size:0.78em; line-height:1.72; margin:0;">A game is small enough to simulate and hard enough to be interesting. You can run it a million times, and you always know who won. That is what he thought games were: small universes you could study intelligence inside.</p>
+      </div>
+
+      <div style="text-align:left;">
+        <div class="card" style="font-size:0.75em; line-height:1.72;">
+          <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--muted); margin:0 0 0.6em;">WHY REINFORCEMENT LEARNING, OF ALL THINGS</p>
+          <p style="margin:0 0 0.7em;">He did a PhD in cognitive neuroscience first, deliberately, as reconnaissance. One finding came back mattering more than the rest.</p>
+          <p style="margin:0;">Dopamine neurons in the midbrain appear to signal <strong>prediction error</strong>: the gap between the reward you expected and the reward you got. That is the same quantity a temporal-difference learning algorithm runs on.</p>
+        </div>
+        <p style="font-size:0.76em; line-height:1.72; margin-top:1em;">So the argument was not that RL was fashionable. In 2010 it emphatically was not. The argument was that something in the one working example of general intelligence appears to compute exactly this, and it would be strange to ignore that.</p>
+        <span class="sidenote">We come back to the dopamine result properly in the second half, where it is the hinge between the psychology and the algorithm. For now it is enough to know it is the reason this company was built on reinforcement learning and not on something else.</span>
+      </div>
+    </div>
+    <aside class="notes">
+      The biography is only here to carry two things, so do not let it become an anecdote reel.
+      First, what games were for. Everyone assumes DeepMind did games because games are a good demo. That is backwards. Games were the laboratory: cheap to run, impossible to argue with about who won, and small enough that you could do the experiment a million times before lunch. Twenty years on, that is still how the place ran experiments.
+      Second, the dopamine link, which is the one that makes the bet look considered rather than romantic. Say the shape of it now and promise the detail later: the brain seems to carry a signal that behaves like a prediction error, and prediction error is the thing TD learning is made of.
+      If someone asks whether that means the brain does RL, the honest answer is no, and it is a better answer than yes. It means one specific signal behaves quantitatively the way a prediction error would. Narrower claim, more impressive for being narrow. You make that point properly on slide 13.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 08 · The one-sentence business plan ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:820px; margin:0 auto; text-align:left;">
+      <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin:0 0 1.3em;">THE COVER OF THE 2010 INVESTOR DECK</p>
+
+      <p style="font-size:1.55em; line-height:1.4; color:#fff; font-style:italic; margin:0 0 1em; font-family:'Georgia',serif;">&ldquo;Build the world's first artificial general intelligence.&rdquo;</p>
+
+      <p style="font-size:0.76em; color:#888; line-height:1.75; margin:0 0 1.7em; max-width:640px;">
+        Shane Legg says that was the whole of the first slide. In 2010 you did not write that down in front of investors. The phrase got you filed with cranks, which is roughly why the field had taken to calling itself machine learning instead.
+      </p>
+
+      <div style="border-top:1px solid #1e1e1e; padding-top:1.3em;">
+        <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin:0 0 1em;">AND UNDERNEATH IT, FIVE THINGS THEY ACTUALLY BELIEVED</p>
+        <div style="font-size:0.7em; line-height:1.7; color:#999; display:grid; grid-template-columns:auto 1fr; gap:0.55em 1em; align-items:baseline;">
+          <span style="font-family:'Courier New',monospace; color:#444;">01</span><span>Intelligence can be understood algorithmically.</span>
+          <span style="font-family:'Courier New',monospace; color:#444;">02</span><span>General intelligence has to be learned. You cannot write it down by hand.</span>
+          <span style="font-family:'Courier New',monospace; color:#444;">03</span><span>The brain is worth reading for hints.</span>
+          <span style="font-family:'Courier New',monospace; color:#c8a96e;">04</span><span style="color:#eee;">An agent should perceive an environment, learn a representation of it, act, get feedback, and improve.</span>
+          <span style="font-family:'Courier New',monospace; color:#444;">05</span><span>More compute will make more general learning algorithms practical.</span>
+        </div>
+      </div>
+
+      <p style="font-size:0.66em; color:#666; margin-top:1.4em; line-height:1.7; font-style:italic;">
+        The fourth one is not a slogan. It is a specification, and we spend the second half of today drawing it.
+      </p>
+    </div>
+    <aside class="notes">
+      Read the sentence and then stop for a beat. It is easy to miss now, when every third company says it, how odd it was to write in 2010.
+      Then take the five slowly, and do not read them off the screen. Four is the one to spend time on, because it is the only one that tells you what to build on Monday morning. Perceive, represent, act, get feedback, improve. That is the agent-environment loop, and they wrote it as a bullet point and then spent fifteen years implementing it.
+      Five deserves a remark too. That is the scaling bet, four years before anybody had the phrase, and they were right about it in a way that is slightly annoying.
+      If a student asks who Shane Legg is: the third founder, the one who had been writing about machine superintelligence since his own PhD, and the reason that sentence was on the cover at all.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 09 · What reinforcement learning is ══ -->
+  <section>
+    <div class="label">Part two &middot; The idea itself</div>
+    <h2 style="margin-bottom:0.3em;">What reinforcement learning is</h2>
+    <p style="font-size:0.78em; color:var(--muted); max-width:720px; margin:0 auto 0.6em;">Strip away Go, Breakout and robots and the same shape is left underneath. It is an abstraction of <em>an animal in a world</em>.</p>
+
+    <svg viewBox="0 0 900 300" style="width:100%; height:auto; max-height:40vh;" role="img" aria-label="The agent-environment loop">
+      <rect x="120" y="60" width="200" height="86" rx="8" fill="#fff" stroke="#1a1a1a" stroke-width="1.6"/>
+      <text x="220" y="100" text-anchor="middle" font-family="Georgia,serif" font-size="19" fill="#1a1a1a">AGENT</text>
+      <text x="220" y="124" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" fill="#888">the thing that learns</text>
+
+      <rect x="580" y="60" width="200" height="86" rx="8" fill="#fff" stroke="#1a1a1a" stroke-width="1.6"/>
+      <text x="680" y="100" text-anchor="middle" font-family="Georgia,serif" font-size="19" fill="#1a1a1a">ENVIRONMENT</text>
+      <text x="680" y="124" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" fill="#888">everything else</text>
+
+      <!-- action arrow (top) -->
+      <path d="M320 88 L570 88" fill="none" stroke="#7ec87e" stroke-width="1.8" marker-end="url(#ah2)"/>
+      <text x="445" y="76" text-anchor="middle" font-family="'Courier New',monospace" font-size="12" letter-spacing="1" fill="#5aa85a">ACTION  a</text>
+      <text x="445" y="53" text-anchor="middle" font-family="Georgia,serif" font-size="12" fill="#999">what it does</text>
+
+      <!-- state + reward arrows (bottom) -->
+      <path d="M680 146 L680 205 L220 205 L220 150" fill="none" stroke="#6e9ec8" stroke-width="1.8" marker-end="url(#ah3)"/>
+      <text x="450" y="226" text-anchor="middle" font-family="'Courier New',monospace" font-size="12" letter-spacing="1" fill="#4a86b8">STATE  s</text>
+      <text x="450" y="247" text-anchor="middle" font-family="Georgia,serif" font-size="12" fill="#999">what it sees next</text>
+
+      <path d="M760 146 L820 146 L820 265 L160 265 L160 150" fill="none" stroke="#c8a96e" stroke-width="1.8" marker-end="url(#ah4)"/>
+      <text x="490" y="285" text-anchor="middle" font-family="'Courier New',monospace" font-size="12" letter-spacing="1" fill="#b08d4a">REWARD  r</text>
+
+      <defs>
+        <marker id="ah2" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#7ec87e"/></marker>
+        <marker id="ah3" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6e9ec8"/></marker>
+        <marker id="ah4" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#c8a96e"/></marker>
+      </defs>
+    </svg>
+
+    <p style="font-size:0.74em; color:var(--muted); margin-top:0.2em;">At every tick: the agent sees a state, picks an action, and the world replies with a number and a new state. That is the whole interface.</p>
+
+    <aside class="notes">
+      Draw this on the board rather than just showing it, if there is a board. It is three arrows and they should be able to reproduce it from memory for the rest of their lives.
+      Make the cut explicit: everything the agent cannot choose is environment. That includes the agent's own body. A robot's motors are environment; only the decision-making is agent. Students find that counter-intuitive and it is exactly right.
+      Vocabulary is on the next slide. Resist defining anything yet — let them look at the picture first and notice how little is in it. The striking thing about RL is not its complexity but how few moving parts the formulation has.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 10 · The vocabulary ══ -->
+  <section>
+    <div class="label">Five words</div>
+    <h2 style="margin-bottom:0.6em;">The entire vocabulary</h2>
+
+    <div style="max-width:850px; margin:0 auto;">
+      <table class="cmp">
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">State</strong> &nbsp;<span style="font-family:'Courier New',monospace; color:var(--blue);">s</span></td>
+          <td>What the agent can see right now. For DQN, four consecutive game frames. For a robot, camera and joint angles. Note that this is rarely the <em>whole</em> truth about the world.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Action</strong> &nbsp;<span style="font-family:'Courier New',monospace; color:var(--green);">a</span></td>
+          <td>What it can do. For Pong, two things: UP or DOWN.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Reward</strong> &nbsp;<span style="font-family:'Courier New',monospace; color:var(--gold);">r</span></td>
+          <td>A single number arriving from the environment. Usually zero. In Pong: +1 when you score, &minus;1 when you concede, 0 for the several hundred frames in between.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Policy</strong> &nbsp;<span style="font-family:'Courier New',monospace;">&pi;</span></td>
+          <td>The agent's behaviour: a function from state to action. <strong>This is the thing the neural network is.</strong> Last week the network mapped image &rarr; label; here it maps state &rarr; action.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Return</strong> &nbsp;<span style="font-family:'Courier New',monospace;">G</span></td>
+          <td>Not the next reward &mdash; the <em>sum of all future rewards</em>, usually with later ones discounted a little. The objective is to maximise this, which is why an agent will accept a loss now for a gain later.</td>
+        </tr>
+      </table>
+    </div>
+
+    <aside class="notes">
+      Two of these five carry all the weight.
+      Policy: say explicitly that this is where last week connects. The network is unchanged — multiply, add, squash. What changes is what the output means and where the training signal comes from. If they take one sentence away, that is the one.
+      Return versus reward: this is where sacrifice becomes possible. If the objective were the next reward, no agent would ever give up a piece in chess. Because the objective is the discounted sum, the machine can learn that a loss now buys more later. Every apparently strategic behaviour you have seen today — the Breakout tunnel, move 37 — is this and nothing more.
+      Discounting: gamma near 1 means far-sighted, near 0 means myopic. Karpathy uses 0.99 for Pong. One line, move on.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 11 · The reward hypothesis ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:760px; margin:0 auto; padding:1.2em 0;">
+      <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin-bottom:1.4em;">THE REWARD HYPOTHESIS</p>
+      <p style="font-size:1.3em; line-height:1.5; color:#fff; font-style:italic; margin-bottom:1.6em;">
+        All goals can be described by the maximisation of expected cumulative reward.
+      </p>
+      <p style="font-size:0.74em; color:#888; line-height:1.75; margin-bottom:1.4em;">Silver puts this on a slide in the first lecture of his course and calls it a hypothesis, not a theorem. It is the assumption the whole field is built on, and it is doing enormous work.</p>
+      <div style="font-size:0.7em; color:#aaa; line-height:1.85; border-top:1px solid #1e1e1e; padding-top:1.2em;">
+        <p style="margin:0 0 0.35em;">Fly a helicopter &mdash; <span style="color:#666;">+1 for following the intended trajectory, &minus;100 for crashing.</span></p>
+        <p style="margin:0 0 0.35em;">Beat a world champion &mdash; <span style="color:#666;">+1 for winning, &minus;1 for losing, 0 for every move in between.</span></p>
+        <p style="margin:0 0 0.35em;">Make a robot walk &mdash; <span style="color:#666;">+1 per metre travelled, &minus;100 for falling over.</span></p>
+        <p style="margin:0;">Manage an investment portfolio &mdash; <span style="color:#666;">reward in pounds.</span></p>
+      </div>
+      <p style="margin-top:1.6em; font-size:0.72em; color:#777; font-style:italic;">Do you believe it? Write down the reward function for &ldquo;be a good doctor&rdquo;.</p>
+    </div>
+    <aside class="notes">
+      Put the challenge at the bottom to the room and give them a minute in pairs. It is the best argument you will have all day and it goes somewhere real.
+      Expect: cure rate. Then push — cure rate rewards refusing hard cases. Patient satisfaction? Rewards prescribing opioids. Survival at five years? Rewards aggressive treatment of people who would have been fine. Every proposal they make is gameable, and the gaming is not hypothetical: this is specification gaming, it is a documented failure mode with a long public list of examples, and it is the same phenomenon as an engagement-maximising feed.
+      The honest position to leave them with: the hypothesis is not obviously true, it is not obviously false, and the difficulty of writing down reward functions for things we actually care about is one of the central open problems in AI safety. That is a real frontier and they can work on it.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 12 · 1898 — Thorndike ══ -->
+  <section>
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left;">
+        <div class="year">1898</div>
+        <div class="label">Edward Thorndike</div>
+        <h2 style="margin-bottom:0.4em;">Where the idea actually comes from</h2>
+        <p style="font-size:0.8em; line-height:1.7;">Thorndike put cats in a crate that opened when a latch was tripped, and timed how long they took to get out. The first escape was always an accident, arrived at by scrabbling. Put the same cat back in, and the scrabbling gradually narrowed onto the latch.</p>
+        <p style="font-size:0.8em; line-height:1.7;">He plotted escape time against attempt number and got a smooth downward curve &mdash; no flash of insight, just a gradual shift in what the animal was likely to do.</p>
+        <div class="pullquote" style="font-size:0.88em; margin-top:0.8em;">
+          Responses followed by satisfaction become more likely; responses followed by discomfort become less likely.
+        </div>
+        <p style="font-size:0.74em; color:var(--muted); margin-top:0.6em;">The <strong>law of effect</strong>, 1911.</p>
+      </div>
+      <div style="text-align:left;">
+        <p style="font-size:0.8em; line-height:1.72;">Look at what that sentence already contains.</p>
+        <div class="card" style="font-size:0.75em; line-height:1.75; margin-top:0.6em;">
+          <p style="margin:0 0 0.6em;"><strong>It is selectional, not instructive.</strong> Nobody shows the cat the latch. The consequence merely re-weights what it already did.</p>
+          <p style="margin:0 0 0.6em;"><strong>It is associative.</strong> The re-weighting is tied to the situation the animal was in, not applied to its behaviour at large.</p>
+          <p style="margin:0;"><strong>It needs exploration.</strong> If the cat never scrabbles, the latch is never tripped and there is nothing to reinforce.</p>
+        </div>
+        <p style="font-size:0.78em; line-height:1.7; margin-top:0.9em;">Skinner built the next forty years of psychology on this, gave us the word <strong>reinforcement</strong>, and showed you could shape elaborate behaviour by rewarding successive approximations to it.</p>
+        <span class="sidenote">The name of the field is a direct inheritance. Sutton and Barto took the term from animal psychology, and the debt is acknowledged openly in the textbook &mdash; the first chapter is partly a history of exactly this.</span>
+      </div>
+    </div>
+    <aside class="notes">
+      The cat is the best teaching object in the lecture because every claim in the formalism is visible in it. Walk the three bullets slowly and point back at the animal for each one.
+      The exploration bullet is the one to dwell on, because it is a design constraint rather than an observation. A policy that has stopped trying new things cannot improve, ever — not because the algorithm is weak but because the information does not exist. That is the exploration-exploitation problem and it arrives later in the lecture.
+      One caution worth voicing, if the room is strong: the analogy to real animals is genuinely useful and genuinely limited. Reinforcement learning is not a theory of how animals learn. It borrowed a principle and then went off and became mathematics.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 13 · 1997 — the brain computes δ ══ -->
+  <section>
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left;">
+        <div class="year">1997</div>
+        <div class="label">Schultz, Dayan &amp; Montague</div>
+        <h2 style="margin-bottom:0.4em;">The brain appears to compute &delta;</h2>
+        <p style="font-size:0.8em; line-height:1.7;">Wolfram Schultz had been recording from dopamine neurons in monkeys given juice. The firing pattern made no sense as a reward signal, because it kept moving.</p>
+        <p style="font-size:0.8em; line-height:1.7;">Read as a <strong>prediction error</strong> it made perfect sense. That quantity had a name and an equation already, because Sutton had needed it nine years earlier to make his learning rule work:</p>
+        <p class="formula" style="font-size:0.9em; margin:0.4em 0 0.7em;">
+          &delta; &nbsp;=&nbsp; <em>r</em> &nbsp;+&nbsp; <em>V</em>(next) &nbsp;&minus;&nbsp; <em>V</em>(now)
+        </p>
+        <p style="font-size:0.78em; line-height:1.7; color:var(--muted);">What I expected, against what I now expect given what just happened. Read it once and let it go &mdash; the algorithm we actually code today does not use it. What matters is that it is a <em>number</em>, and that something in a monkey's midbrain appears to be computing it.</p>
+        <p style="font-size:0.78em; line-height:1.7; margin-top:0.8em; background:var(--soft); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:6px; padding:0.8em 1.1em;">
+          A quantity invented by computer scientists to make an algorithm work turned out to have a measurable physical correlate in the midbrain.
+        </p>
+      </div>
+      <div style="text-align:left;">
+        <div class="card" style="font-size:0.75em; line-height:1.7;">
+          <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--muted); margin:0 0 0.7em;">WHAT THE NEURONS DID</p>
+          <p style="margin:0 0 0.6em;"><strong>Unexpected juice.</strong><br><span style="color:var(--muted);">A burst of firing. Reward arrived, no prediction preceded it: &delta; is large and positive.</span></p>
+          <p style="margin:0 0 0.6em;"><strong>A tone, then juice, repeatedly.</strong><br><span style="color:var(--muted);">The burst migrates <em>backwards</em> onto the tone. The juice itself stops producing any response at all &mdash; it was predicted, so &delta; is zero.</span></p>
+          <p style="margin:0;"><strong>Tone, then no juice.</strong><br><span style="color:var(--muted);">Firing drops <em>below</em> baseline at exactly the moment the juice was due. Expected and absent: &delta; is negative.</span></p>
+        </div>
+        <p style="font-size:0.76em; color:var(--muted); margin-top:0.9em; font-style:italic;">This is the result Hassabis points to when explaining why DeepMind was built on reinforcement learning.</p>
+      </div>
+    </div>
+    <aside class="notes">
+      The formula is here only so the three conditions mean something. Do not teach temporal-difference learning — it is a value method, today's notebook is a policy method, and it would be a detour. One sentence: Sutton needed a term for "what I expected minus what I now expect", wrote it down in 1988, and it made his learning rule converge.
+      Deliver the three conditions as three experiments, and ask the room to predict the third before you reveal it. Most people guess "nothing happens". The dip below baseline is the detail that convinces, because a pure reward signal has no reason to go negative when nothing occurs. Something in there is keeping an expectation and subtracting.
+      Then be precise about what this does and does not establish. It does not show the brain runs TD learning. It shows one specific signal behaves, quantitatively, the way a prediction error would. That is a much narrower claim and much more impressive for being narrow.
+      This is also the point to close the loop with slide 07. Hassabis read this literature as evidence that reinforcement learning was not merely a convenient engineering trick but something evolution had already found. That is the intellectual justification for the entire bet.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 14 · Four things that make it different ══ -->
+  <section>
+    <div class="label">Slide 8 &middot; David Silver, RL Course, Lecture 1</div>
+    <h2 style="margin-bottom:0.6em;">Four things that make this a different subject</h2>
+
+    <div style="max-width:850px; margin:0 auto;">
+      <table class="cmp">
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">No supervisor</strong></td>
+          <td>Only a reward signal. Nothing ever says what you should have done &mdash; only how what you did turned out.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Delayed feedback</strong></td>
+          <td>The consequence of a decision may not show up for hundreds of steps. The blunder and the defeat are separated by an hour of play.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">Time matters</strong></td>
+          <td>The data is a sequence, not a pile. Last week's assumption that examples are independent and identically distributed is simply false here.</td>
+        </tr>
+        <tr>
+          <td><strong style="font-style:normal; color:#1a1a1a;">The agent's actions affect the data it sees</strong></td>
+          <td>Behave badly and you only ever collect bad experience. The dataset is not given to you &mdash; <em>you generate it</em>, by acting.</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size:0.76em; color:var(--muted); margin-top:1.2em; max-width:760px; margin-left:auto; margin-right:auto; font-style:italic;">Silver's own framing: reinforcement learning is the science of decision making.</p>
+
+    <aside class="notes">
+      This is essentially Silver's own list and it is worth keeping his order, because the fourth item is the one nobody anticipates and it belongs at the end.
+      Make the fourth concrete. A supervised dataset is fixed: MNIST is MNIST whatever your network does. In RL, a policy that never moves left never sees what is on the left, so it can never learn that the left was better. The model's incompetence censors its own training data. There is no analogue of this in anything they learned last week, and it is why exploration is a first-class problem rather than a detail.
+      If you have time and the room is engaged, Silver's lecture series is the single best next step for them and it is free. Say so here rather than at the end, when they are packing up.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 15 · Exploration and exploitation ══ -->
+  <section>
+    <div class="label">The dilemma that follows</div>
+    <h2 style="margin-bottom:0.7em;">Exploration and exploitation</h2>
+    <div class="two-col" style="gap:2em; align-items:start;">
+      <div class="card" style="text-align:left; font-size:0.76em; line-height:1.7;">
+        <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--muted); margin:0 0 0.6em;">EXPLOIT</p>
+        <p style="margin:0;">Do the best thing you currently know. Collect the reward you are confident of, and learn nothing new.</p>
+      </div>
+      <div class="card" style="text-align:left; font-size:0.76em; line-height:1.7;">
+        <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--muted); margin:0 0 0.6em;">EXPLORE</p>
+        <p style="margin:0;">Try something you are unsure about. Probably do worse today, and possibly discover something better than anything you knew.</p>
+      </div>
+    </div>
+    <p style="font-size:0.78em; line-height:1.7; max-width:760px; margin:1.2em auto 0;">You cannot do both with the same action, and you must decide afresh at every step, forever. Your usual restaurant or the new one. Your current job or a different career.</p>
+    <p style="font-size:0.78em; line-height:1.7; max-width:760px; margin:0.7em auto 0; color:var(--muted);">The crudest workable answer is &epsilon;-greedy: take the best known action, except that some small fraction of the time, act at random. It is almost embarrassingly simple and it is what DQN used.</p>
+    <aside class="notes">
+      This slide sells itself if you make it personal before you make it technical. Ask how many of them ordered something new the last time they ate somewhere they like. The room laughs, and then they have the intuition for free.
+      The technical points worth adding: exploiting alone means a policy can be permanently stuck in a mediocre habit, and it will never find out, because the evidence that would correct it is precisely the evidence it declines to gather. And the balance should shift over a lifetime — explore heavily when ignorant, exploit when experienced. Which is a claim about people as much as about algorithms, and they will notice that.
+      Move 37 is the payoff: it exists because the system spent an enormous amount of its training doing things no sensible player would try.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 16 · 2013 — nobody told it there was a ball ══ -->
+  <section>
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left;">
+        <div class="year">2013</div>
+        <div class="label">Deep Q-Networks</div>
+        <h2 style="margin-bottom:0.5em;">Nobody told it there was a ball</h2>
+        <p style="font-size:0.79em; line-height:1.72; margin:0 0 0.7em;">It never received the rules of Breakout. No paddle, no bricks, no coordinates, no notion that the thing moving across the screen was an object at all.</p>
+        <p style="font-size:0.79em; line-height:1.72; margin:0 0 0.5em;">What it got was a rectangle of brightness values, a number that sometimes went up, and a joystick:</p>
+        <div class="card" style="font-size:0.85em; text-align:center; padding:0.9em 1em; margin:0.4em 0 0.9em;">
+          <p style="margin:0; font-family:'Courier New',monospace; font-size:0.85em; letter-spacing:0.04em;">pixels &nbsp;+&nbsp; score &nbsp;+&nbsp; the controller</p>
+        </div>
+        <p style="font-size:0.77em; line-height:1.72; margin:0; color:var(--muted);">Then they ran the same code, untouched, on a shelf of completely different games.</p>
+      </div>
+
+      <div style="text-align:left;">
+        <p style="font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:0.12em; color:var(--muted); margin:0 0 0.8em;">BREAKOUT, AS HASSABIS TELLS IT</p>
+        <div style="font-size:0.75em; line-height:1.72; border-left:2px solid var(--border); padding-left:1.1em;">
+          <p style="margin:0 0 0.6em;">After half an hour it is hopeless, and misses nearly everything.</p>
+          <p style="margin:0 0 0.6em;">After an hour it returns the ball sometimes.</p>
+          <p style="margin:0 0 0.6em;">After two it plays about as well as you would.</p>
+          <p style="margin:0; color:#1a1a1a;">After several, it starts digging a tunnel up the side of the wall so it can put the ball <em>behind</em> the bricks, where it rattles about scoring on its own.</p>
+        </div>
+        <p style="font-size:0.77em; line-height:1.72; margin-top:1.1em;">That last one is the part worth sitting with. It was never told the strategy existed. It was never told there was a wall, or that a wall has a behind.</p>
+      </div>
+    </div>
+    <aside class="notes">
+      Do the absences first and make them concrete, because the list of things it was not given is far more striking than the list of what it was. It never sees the number 83 meaning ball_x. It sees brightness values, and the fact that some of them hang together as a ball is itself something it has to work out.
+      Then walk the four lines. The first three are good engineering and nothing more. The fourth is a different kind of claim, and the room should feel the gear change: the tunnel is a genuinely non-obvious idea that strong human players took a while to find, and it turned up in a system that had never been told what a brick was.
+      Suleyman's line on DQN is worth quoting exactly: really the thing that changed everything for us.
+      This slide has been moved down here deliberately, so that it sits three seconds before Pong. Say why: Karpathy is about to hand his network exactly the same three things DeepMind handed theirs — pixels, a score, and the controller — and the whole of the next twenty minutes is one worked example of this slide.
+      Housekeeping: if you have the tunnel clip, it goes here. If it has not loaded, describe it and move on. Do not stand there fighting a video.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 17 · The paper was not about Breakout ══ -->
+  <section>
+    <div class="label">The claim being made</div>
+    <h2 style="margin-bottom:0.7em;">The paper was not about Breakout</h2>
+
+    <div style="max-width:820px; margin:0 auto; text-align:left;">
+      <p style="font-size:0.78em; line-height:1.72; color:var(--muted); margin:0 0 0.9em;">Everyone read that as <em>look, an AI plays Atari</em>. What they meant was considerably harder.</p>
+
+      <div class="pullquote" style="font-size:1em; font-style:normal; color:#1a1a1a; margin:0 0 1.2em; line-height:1.55;">
+        The same learning algorithm can take raw sensory data from many different environments and work out which actions lead to reward, without being rewritten for each one.
+      </div>
+
+      <p style="font-size:0.74em; color:var(--muted); margin:0 0 0.7em; font-style:italic;">Three words in that sentence are carrying it.</p>
+
+      <div class="three-col" style="font-size:0.72em; line-height:1.65; gap:1.3em;">
+        <div class="card">
+          <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.08em; color:var(--gold); margin:0 0 0.5em;">SAME</p>
+          <p style="margin:0;">One architecture, one set of hyperparameters. Nothing tuned per game.</p>
+        </div>
+        <div class="card">
+          <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.08em; color:var(--gold); margin:0 0 0.5em;">RAW</p>
+          <p style="margin:0;">Pixels. Not features some engineer decided were the important ones.</p>
+        </div>
+        <div class="card">
+          <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.08em; color:var(--gold); margin:0 0 0.5em;">MANY</p>
+          <p style="margin:0;">Forty-nine Atari games, one agent. Above human level on about half of them.</p>
+        </div>
+      </div>
+
+      <p style="font-size:0.7em; color:var(--muted); margin:1.1em 0 0; line-height:1.7;">
+        Seven games in the 2013 workshop paper. Forty-nine in <em>Human-level control through deep reinforcement learning</em>, <em>Nature</em>, February 2015.
+      </p>
+    </div>
+
+    <p style="font-size:0.75em; margin-top:1.2em; text-align:center; font-style:italic; color:var(--muted);">Sensation &rarr; representation &rarr; action &rarr; a strategy nobody supplied. The whole DeepMind thesis, in a closed world small enough to prove it.</p>
+
+    <aside class="notes">
+      This is the slide that earns the lecture its title, so give it room.
+      Draw the contrast with Deep Blue, which they have all heard of. Deep Blue beat Kasparov in 1997 and could not play draughts, because every single thing it knew about chess was put there by people. DQN plays forty-nine games with the same code because nothing it knows about any of them was put there by people.
+      If someone asks what the network actually predicts, that is a good question and you should hold it. Q-learning is a value method; we teach policy methods today, through Pong. Give them the shape and promise the rest: it learns to predict, for each button, how much total score pressing it now is eventually worth.
+      Be honest about the limits or a sharp student will do it for you. It was enormously sample-hungry. It was bad at anything needing long-horizon planning, Montezuma's Revenge being the standing example. And the accurate figure is above human level on about half, not "beat humans at Atari".
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 18 · Move 37 ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:930px; margin:0 auto; text-align:left;">
+      <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin:0 0 1.1em;">SEOUL &middot; 10 MARCH 2016 &middot; GAME TWO, MOVE 37 &middot; ALPHAGO (BLACK)</p>
+
+      <div class="two-col" style="align-items:start; gap:2em;">
+        <div>
+          <svg viewBox="0 0 300 300" style="width:100%; max-width:270px; display:block;" role="img"
+               aria-label="Schematic of the right edge of a Go board. The conventional fourth-line point is ghosted; AlphaGo's stone sits one line further out, on the fifth line at P10.">
+            <rect x="0" y="0" width="300" height="300" fill="#12100d"/>
+            <g stroke="#3a352c" stroke-width="1">
+              <line x1="40" y1="20" x2="40" y2="280"/>
+              <line x1="80" y1="20" x2="80" y2="280"/>
+              <line x1="120" y1="20" x2="120" y2="280"/>
+              <line x1="160" y1="20" x2="160" y2="280"/>
+              <line x1="200" y1="20" x2="200" y2="280"/>
+              <line x1="240" y1="20" x2="240" y2="280"/>
+              <line x1="20" y1="40" x2="270" y2="40"/>
+              <line x1="20" y1="80" x2="270" y2="80"/>
+              <line x1="20" y1="120" x2="270" y2="120"/>
+              <line x1="20" y1="160" x2="270" y2="160"/>
+              <line x1="20" y1="200" x2="270" y2="200"/>
+              <line x1="20" y1="240" x2="270" y2="240"/>
+            </g>
+            <!-- board edge -->
+            <line x1="270" y1="20" x2="270" y2="280" stroke="#6b6152" stroke-width="2.4"/>
+            <text x="284" y="155" fill="#6b6152" font-family="Georgia,serif" font-size="11" font-style="italic" transform="rotate(90 284 155)" text-anchor="middle">edge of the board</text>
+
+            <!-- line labels -->
+            <text x="240" y="14" fill="#7a7060" font-family="'Courier New',monospace" font-size="9.5" text-anchor="middle">3rd</text>
+            <text x="200" y="14" fill="#7a7060" font-family="'Courier New',monospace" font-size="9.5" text-anchor="middle">4th</text>
+            <text x="160" y="14" fill="#c8a96e" font-family="'Courier New',monospace" font-size="9.5" text-anchor="middle">5th</text>
+
+            <!-- star point -->
+            <circle cx="200" cy="200" r="3" fill="#3a352c"/>
+
+            <!-- the conventional move, ghosted, on the 4th line -->
+            <circle cx="200" cy="120" r="16" fill="none" stroke="#5a5348" stroke-width="1.3" stroke-dasharray="3 3"/>
+            <text x="200" y="124" fill="#6b6152" font-family="Georgia,serif" font-size="10" text-anchor="middle">?</text>
+
+            <!-- AlphaGo's stone, 5th line -->
+            <circle cx="160" cy="120" r="17" fill="#0a0a0a" stroke="#4a4438" stroke-width="1"/>
+            <text x="160" y="125" fill="#f5f5f5" font-family="Georgia,serif" font-size="14" text-anchor="middle">37</text>
+
+            <text x="86" y="212" fill="#c8a96e" font-family="Georgia,serif" font-size="11.5" font-style="italic">P10</text>
+            <line x1="112" y1="207" x2="150" y2="136" stroke="#c8a96e" stroke-width="0.9" opacity="0.6"/>
+          </svg>
+          <p style="font-size:0.5em; color:#555; line-height:1.6; margin:0.6em 0 0; font-style:italic;">Schematic of the shape, not the full position. The dashed circle is where convention puts the stone.</p>
+        </div>
+
+        <div>
+          <p style="font-size:1.15em; line-height:1.45; color:#fff; margin:0 0 1.2em; font-family:'Georgia',serif;">
+            A shoulder hit on the fifth line.<br>
+            <span style="color:#888; font-size:0.74em;">Every book says the fourth. The commentators assumed a bug. Lee Sedol left the room.</span>
+          </p>
+          <div style="border-top:1px solid #1e1e1e; padding-top:1.1em;">
+        <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin:0 0 1em;">WHY THIS ONE MOVE IS THE WHOLE ARGUMENT</p>
+        <div style="font-size:0.7em; line-height:1.72; color:#bbb;">
+          <p style="margin:0 0 0.6em;">Go has been played for something like four thousand years. Move 37 was not in any of it.</p>
+          <p style="margin:0 0 0.6em;">It could not have come from a label. No human knew it, so none could have written it down &mdash; that is what the one-in-ten-thousand estimate means.</p>
+          <p style="margin:0; color:#eee;">It came from the system playing itself several million times and keeping what won.</p>
+        </div>
+      </div>
+
+        </div>
+      </div>
+
+      <p style="margin-top:1.1em; padding-top:0.9em; border-top:1px solid #222; font-size:0.95em; color:#fff; font-style:italic; text-align:center; font-family:'Georgia',serif;">
+        A machine can learn to do a thing that nobody knows how to do.
+      </p>
+    </div>
+    <aside class="notes">
+      The emotional centre of the first half. Give it room and do not talk over it. If you have the documentary clip, this is where it goes — around 49:00, ninety seconds either side, and it does more than any diagram will.
+      Set the scene in two sentences and no more: March 2016, Seoul, more than two hundred million people watching, AlphaGo won the match four games to one.
+      On the diagram: AlphaGo was black, the move was at P10, which is the fifth line in from the right edge. The dashed circle is the fourth line, where essentially every book and every professional instinct puts the stone — it is a stronger point for taking territory, and four thousand years of practice says so. Say it is a schematic of the shape rather than the whole board, because it is, and because a real thirty-seven-stone position would be illegible from the back of the room. Michael Redmond called it creative and unique; An Younggil called it a rare and intriguing shoulder hit.
+      Then make the technical point explicit, because the drama alone will not teach anything. AlphaGo's first version <em>did</em> learn from human games. But supervised learning on human games can only ever reproduce the statistics of human play, and in human play this move occurs about once in ten thousand times. The supervised part could not have produced it. What produced it was self-play: the system playing itself millions of times and keeping what won. <strong>That is the entire distinction this lecture is about, compressed into one stone.</strong>
+      The sentence at the bottom is the first time the room sees it stated outright, and it should arrive as a conclusion rather than a claim — they have just been given the evidence, so say it once, flatly, and stop. It comes back one final time on the last slide before the close.
+      Counterweight, if you want the story honest and the room warmer: game four, Lee Sedol's move 78, the "divine move", which AlphaGo had no answer to. He won that game.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 19 · Pong from pixels ══ -->
+  <section>
+    <div class="label">Slide 9 &middot; Karpathy, 2016</div>
+    <h2 style="margin-bottom:0.5em;">Pong from pixels</h2>
+
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left; font-size:0.79em; line-height:1.72;">
+        <p style="margin:0 0 0.8em;">The agent is <strong>not told what Pong is</strong>. It never receives <span class="formula" style="font-size:0.85em; padding:0.1em 0.4em;">ball position = (83, 42)</span> or <span class="formula" style="font-size:0.85em; padding:0.1em 0.4em;">paddle_y = 97</span>.</p>
+        <p style="margin:0 0 0.8em;">It receives what a camera would receive: a grid of pixel intensities, <strong>210 &times; 160 &times; 3</strong>, which is <strong>100,800 numbers</strong>, thirty times a second.</p>
+        <p style="margin:0;">It has two choices &mdash; <strong>UP</strong> or <strong>DOWN</strong>. It gets <strong>+1</strong> when it scores, <strong>&minus;1</strong> when it concedes, and <strong>0</strong> for the several hundred frames in between.</p>
+      </div>
+      <div style="text-align:left;">
+        <div class="card" style="font-size:0.74em; line-height:1.7;">
+          <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--muted); margin:0 0 0.7em;">WHAT IT IS NEVER TOLD</p>
+          <p style="margin:0; color:var(--muted); line-height:1.9;">
+            that some pixels constitute a ball<br>
+            that other pixels are its paddle<br>
+            that objects persist between frames<br>
+            that the ball has a velocity<br>
+            that the ball bounces<br>
+            that a paddle can intercept it<br>
+            that moving up now can matter fifty frames later<br>
+            what a good move is
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1em; display:grid; grid-template-columns:auto 1fr; gap:1.4em; align-items:center; max-width:840px; margin-left:auto; margin-right:auto;">
+      <div>
+        <img src="attachments/karpathy/pong.gif" alt="The game of Pong" style="width:300px; max-width:100%; border:1px solid var(--border); border-radius:4px;">
+        <p style="font-size:0.58em; color:var(--muted); text-align:center; margin:0.35em 0 0; font-style:italic;">Pong, and the MDP it really is &mdash; Karpathy (2016)</p>
+      </div>
+      <p style="font-size:0.72em; line-height:1.72; text-align:left; color:var(--muted); margin:0;">
+        Left is what you see. Right is what the problem actually is: a graph whose nodes are game states and whose edges are the actions that move between them, each with some probability. The agent never sees the graph. It sees the left-hand picture, one frame at a time, as a hundred thousand numbers.
+      </p>
+    </div>
+
+    <aside class="notes">
+      Slow right down here. This slide is where the whole lecture becomes concrete and it deserves four or five minutes on its own.
+      Read the right-hand column aloud, line by line. Each line is a fact the room assumed the machine had, and each one has to be discovered. Most students do not realise, until they see this list, that "there is a ball" is itself something learned.
+      The number to hold onto is 100,800 in, two out. Everything between those two is the learning problem.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 20 · Put yourself in its position ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:800px; margin:0 auto; padding:1.2em 0; text-align:left;">
+      <p style="font-family:'Courier New',monospace; font-size:0.55em; letter-spacing:0.2em; color:#444; margin-bottom:1.4em;">PUT YOURSELF IN ITS POSITION</p>
+      <p style="font-size:0.85em; color:#bbb; line-height:1.8; margin-bottom:1.1em;">I hand you this, thirty times a second:</p>
+      <p style="font-family:'Courier New',monospace; font-size:0.62em; color:#7ec87e; line-height:1.8; background:#141414; border:1px solid #222; border-radius:6px; padding:0.9em 1.1em; margin-bottom:1.2em;">
+        [0, 0, 0, 144, 144, 0, 0, 0, &hellip; 100,000 more numbers &hellip;]
+      </p>
+      <p style="font-size:0.85em; color:#bbb; line-height:1.8; margin-bottom:0.5em;">And I say only: <span style="color:#fff;">choose A or B.</span></p>
+      <p style="font-size:0.85em; color:#bbb; line-height:1.8;">Then occasionally, much later: <span style="color:#c8a96e;">+1</span>.</p>
+      <p style="margin-top:1.8em; padding-top:1.2em; border-top:1px solid #1e1e1e; font-size:0.85em; color:#fff; font-style:italic;">
+        I never explain any of it. Go on then.
+      </p>
+    </div>
+    <aside class="notes">
+      Deliver this one straight and then be quiet for a good five seconds. The silence does the work.
+      If you want to push it further, ask how long they think they would need before they even suspected that some of those numbers were an object that moved. That is what the network is doing in its first thousand games.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 21 · How you would have written it ══ -->
+  <section>
+    <div class="label">For contrast</div>
+    <h2 style="margin-bottom:0.6em;">How you would have written it</h2>
+
+    <div class="two-col" style="align-items:start; gap:2em;">
+      <div style="text-align:left;">
+        <p style="font-size:0.75em; color:var(--muted); margin:0 0 0.5em;">Given these inputs &hellip;</p>
+        <pre class="ascii" style="font-size:0.58em;">ball_x           = 120
+ball_y           = 80
+ball_velocity_y  = +4
+paddle_y         = 60</pre>
+        <p style="font-size:0.75em; color:var(--muted); margin:0.7em 0 0.5em;">&hellip; a decent rule is nearly obvious:</p>
+        <pre class="ascii" style="font-size:0.58em;">if ball_y &gt; paddle_y:
+    move_down()
+else:
+    move_up()</pre>
+      </div>
+      <div style="text-align:left; font-size:0.78em; line-height:1.72;">
+        <p style="margin:0 0 0.8em;">Notice who did the intelligent work. <strong>You did</strong> &mdash; before a line of the rule was written.</p>
+        <p style="margin:0 0 0.8em;">You supplied the concepts <em>ball</em>, <em>position</em>, <em>velocity</em>, <em>paddle</em>. You decided which four numbers out of a hundred thousand mattered. The four-line rule is the trivial part that follows.</p>
+        <div class="pullquote" style="font-size:0.95em; font-style:normal; color:#1a1a1a; margin:0.9em 0 0;">
+          With pixel RL you supply:<br>
+          <span style="font-family:'Courier New',monospace; font-size:0.85em;">image &rarr; ??? &rarr; ??? &rarr; UP / DOWN</span><br>
+          and a reward. The <span style="font-family:'Courier New',monospace;">???</span> has to emerge.
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      This is the pivot of the argument and it connects straight back to the pedestrian example in Lecture 1.
+      Make them see that representation is the whole game. Everyone in the room can write the four-line rule. Nobody in the room can write the function from 100,800 pixels to those four numbers — and that function is what the network learns on the way to learning the policy. The features are not given; they are a by-product.
+      Worth one sentence of honesty: for Pong you obviously would use the four numbers if someone handed them to you. The point is the cases where nobody can hand them to you, which is most of reality. Cup-picking, driving, surgery, conversation.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 22 · Credit assignment ══ -->
+  <section>
+    <div class="label">The hard problem</div>
+    <h2 style="margin-bottom:0.5em;">Which action earned the point?</h2>
+
+    <div class="two-col" style="align-items:start; gap:2.2em;">
+      <div style="text-align:left;">
+        <pre class="ascii" style="font-size:0.6em;">t = 1     UP       reward 0
+t = 2     UP       reward 0
+t = 3     DOWN     reward 0
+t = 4     DOWN     reward 0
+      ...
+t = 47    UP       reward 0
+      ...
+t = 80    UP       reward 0
+t = 81             reward <span style="color:#b08d4a;">+1</span></pre>
+        <p style="font-size:0.75em; color:var(--muted); margin-top:0.8em;">Eighty decisions. One number, at the end.</p>
+      </div>
+      <div style="text-align:left; font-size:0.78em; line-height:1.72;">
+        <p style="margin:0 0 0.8em;">Some of those actions were the reason. Most were irrelevant. A few were probably mistakes that happened to be survivable.</p>
+        <p style="margin:0 0 0.8em;"><strong>The reward does not say which.</strong> And you are adjusting roughly a million parameters on the strength of it.</p>
+        <p style="margin:0; background:var(--soft); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:6px; padding:0.8em 1.1em;">
+          This is the <strong>credit assignment problem</strong>, and it is the thing that makes reinforcement learning hard in a way nothing last week was hard.
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-top:0.8em; max-width:680px; margin-left:auto; margin-right:auto;">
+      <img src="attachments/karpathy/episodes.png" alt="Cartoon diagram of four games: two won, two lost" style="width:100%; border:1px solid var(--border); border-radius:4px;">
+      <p style="font-size:0.58em; color:var(--muted); text-align:center; margin:0.35em 0 0; font-style:italic;">Four games. Two won, two lost &mdash; and the algorithm encourages <em>every</em> action in the winners. Karpathy (2016)</p>
+    </div>
+
+    <aside class="notes">
+      Ask them how they would solve it before you tell them anything. You will get three answers, and all three are real research programmes: reward the most recent actions most (that is discounting), work out what would have happened otherwise (counterfactuals and baselines), or learn to predict value at every step so you never wait for the end (that is TD, which you did twenty minutes ago — point back at it).
+      Then contrast with last week in one sentence, because the contrast is the point: with backpropagation the error is available at the output on every single example, so credit assignment through the layers is a calculus exercise. Here the error is one number, arriving late, for an entire episode.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 23 · The preprocessing pipeline ══ -->
+  <section>
+    <div class="label">What actually reaches the network</div>
+    <h2 style="margin-bottom:0.4em;">Throwing almost everything away</h2>
+
+    <div class="two-col" style="align-items:start; gap:2em;">
+      <div>
+        <pre class="ascii" style="font-size:0.5em;">                SHAPE              CONTENT
+
+obs
+                210x160x3          RGB pixels
+                     |
+                     |  [35:195]
+                     v
+obs_cropped
+                160x160x3          crop off score + borders
+                     |
+                     |  [::2, ::2, 0]
+                     v
+obs_downsampled
+                 80x80             one channel, every other pixel
+                     |
+                     |  != 144, != 109, != 0
+                     v
+obs_binary
+                 80x80             True / False
+                     |
+                     |  .flatten()
+                     v
+obs_flattened
+                  6400             a vector</pre>
+      </div>
+      <div style="text-align:left; font-size:0.77em; line-height:1.72;">
+        <p style="margin:0 0 0.8em;">Read the right-hand column as a list of deliberate losses:</p>
+        <p style="margin:0 0 0.8em; color:var(--muted); line-height:1.9;">
+          remove irrelevant screen regions<br>
+          throw away three quarters of the pixels<br>
+          throw away two colour channels<br>
+          throw away exact intensities<br>
+          keep only object-or-background<br>
+          flatten the picture into a vector
+        </p>
+        <p style="margin:0 0 0.8em;"><strong>100,800 numbers become 6,400.</strong> Karpathy's network is then <span class="formula" style="font-size:0.85em; padding:0.1em 0.4em;">6400 &rarr; 200 &rarr; 1</span> &mdash; one hidden layer, and a single output read as the probability of moving UP.</p>
+        <p style="margin:0; color:var(--muted); font-style:italic;">Flattening destroys the fact that adjacent pixels are adjacent. The network has to rediscover that too.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      Two questions to put to the room, in this order.
+      First: why is colour thrown away? Because it carries no information about this task. Good — so somebody looked at the problem and decided that. That is a human choice, a prior, and it is exactly the kind of choice the pixel-RL story claims not to need. Be honest that preprocessing is a small smuggled-in piece of human knowledge.
+      Second, and better: a single frame cannot tell you which way the ball is going. So how does it know? The answer in Karpathy's code is that the input is the difference between consecutive frames. That difference image is motion, handed over for free, and it is the clearest example of an inductive bias you will find. Ask them what else they would hand over if they were designing it.
+      Finally the size of the network: 6400 to 200 to 1 is small — this is not a large model by any standard, and it learns Pong. Worth saying, because they assume everything requires a data centre.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 24 · The network itself ══ -->
+  <section>
+    <div class="label">The whole machine</div>
+    <h2 style="margin-bottom:0.4em;">Two layers. That is the entire thing.</h2>
+
+    <div style="max-width:700px; margin:0.6em auto 0;">
+      <img src="attachments/karpathy/policy.png" alt="A two-layer fully connected policy network" style="width:100%; max-width:560px; border:1px solid var(--border); border-radius:4px;">
+      <p style="font-size:0.58em; color:var(--muted); text-align:center; margin:0.35em 0 0; font-style:italic;">Karpathy's policy network (2016)</p>
+    </div>
+
+    <div style="max-width:820px; margin:1.1em auto 0; text-align:left; font-size:0.75em; line-height:1.72;">
+      <p style="margin:0 0 0.7em;">6400 inputs, 200 hidden units, one output read as the probability of moving UP. About 1.3 million parameters, one hidden layer, no convolutions. It is smaller than anything you built last week.</p>
+      <p style="margin:0; color:var(--muted);">Worth saying plainly: <strong>this is the same object as Lecture 1.</strong> Same layers, same weights, same backpropagation. Only the meaning of the output has changed &mdash; last week it was a label, this week it is a decision &mdash; and because of that, where the training signal comes from has to change completely.</p>
+    </div>
+
+    <aside class="notes">
+      Deflate it deliberately. Students arrive expecting the architecture to be where the cleverness lives, and here the architecture is a first-week exercise. Everything hard about this problem is in where the gradient comes from, not in the shape of the net.
+      Point at the flattening again if you did not before: turning the 80x80 image into a 6400-vector destroys the fact that adjacent pixels are adjacent, and the network has to rediscover that too. A convolutional net would not have to. Karpathy uses a plain one on purpose, to show the crudest possible thing still works.
+      If somebody asks why only one output rather than two: with two actions you only need the probability of one of them. It generalises to a softmax over however many buttons the console has.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 25 · The REINFORCE algorithm ══ -->
+  <section>
+    <div class="label">Williams, 1992</div>
+    <h2 style="margin-bottom:0.15em;">The REINFORCE algorithm</h2>
+    <h3 style="margin-bottom:0.7em;">Or, in plain words: a comically crude answer that works</h3>
+
+    <div style="max-width:820px; margin:0 auto; text-align:left; font-size:0.72em; line-height:1.7;">
+      <div class="card" style="font-size:0.95em; line-height:1.75;">
+        <p style="margin:0 0 0.5em;">Play a whole game, whatever your current policy says.</p>
+        <p style="margin:0 0 0.5em;">If the outcome was <strong>better than usual</strong>, make every action you took a little <em>more</em> likely.</p>
+        <p style="margin:0 0 0.5em;">If it was <strong>worse than usual</strong>, make them all a little <em>less</em> likely.</p>
+        <p style="margin:0; color:var(--muted);">Repeat a few hundred thousand times.</p>
+      </div>
+
+      <p style="margin:0.9em 0 0.7em;">It reinforces the good actions and the irrelevant ones indiscriminately &mdash; but the irrelevant ones appear in winning and losing games alike, so their pushes cancel, and the ones that genuinely mattered accumulate. The signal is buried in noise, and the answer is simply to take an enormous number of samples.</p>
+
+      <p style="margin:0 0 0.9em; font-size:0.9em; color:var(--muted);">Karpathy is honest about the cost: a few days of training on one machine, for a game a person picks up in a minute.</p>
+
+      <div class="card" style="font-size:0.88em; line-height:1.72; border-left:3px solid var(--blue);">
+        <p style="font-family:'Courier New',monospace; font-size:0.78em; letter-spacing:0.1em; color:var(--blue); margin:0 0 0.6em;">THE SUPERVISED COUNTERPART</p>
+        <p style="margin:0 0 0.55em;">Last week's algorithm has a name too, and the two are closer than they look. Supervised classification ascends <span class="formula" style="font-size:0.85em; padding:0.1em 0.45em;">&nabla; log <em>p</em>(<em>y</em>* | <em>x</em>)</span> &mdash; push up the probability of the label somebody gave you. That is cross-entropy, trained by SGD.</p>
+        <p style="margin:0 0 0.55em;">REINFORCE ascends <span class="formula" style="font-size:0.85em; padding:0.1em 0.45em;"><em>R</em> &middot; &nabla; log <em>p</em>(<em>a</em> | <em>s</em>)</span> &mdash; push up the probability of the action <em>you yourself chose</em>, scaled by how the episode turned out.</p>
+        <p style="margin:0; color:var(--muted);">Same gradient. The label has been replaced by your own sample, and the certainty of a teacher by a number that arrives at the end.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      The cancellation argument is the one insight on this slide and it repays being said twice, in different words. An action that has nothing to do with the outcome shows up in good episodes and bad episodes at roughly the same rate, so over many episodes it gets pushed up as often as down. An action that genuinely tends to precede winning gets pushed up more often than down. Nobody assigns credit; the statistics do it, slowly.
+      On the name: REINFORCE is Ronald Williams, 1992, and it is a forced acronym — reward increment equals nonnegative factor times offset reinforcement times characteristic eligibility. Nobody uses the expansion. Say it once for the record and move on, but do give them the name, because it is what the method is called in every paper they will read and "policy gradients" is the family, not the algorithm.
+      The supervised comparison in the box is the one to put on the board if you have one. Write the two gradients under each other and point at the only difference. In supervised learning the thing multiplying the gradient is a one, because you were told the answer and you are certain of it. In REINFORCE it is the return, which might be minus one, and which you do not find out until the end. Everything difficult about this subject is contained in that substitution.
+      That also explains the sample inefficiency plainly, and sample inefficiency is the honest headline criticism of the whole field. A human learns Pong in a minute. This takes days. Ask why, and let them speculate — the answers involve prior knowledge of objects and physics that the network has to build from nothing, and it is an open research question, not a settled one.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 26 · Where the gradient comes from ══ -->
+  <section>
+    <div class="label">The same picture, twice</div>
+    <h2 style="margin-bottom:0.5em;">Where the gradient comes from</h2>
+
+    <div style="max-width:900px; margin:0 auto;">
+      <img src="attachments/karpathy/sl.png" alt="Supervised learning: the correct label is known and backpropagated" style="width:100%; border:1px solid var(--border); border-radius:4px;">
+      <p style="font-size:0.62em; line-height:1.6; color:var(--muted); text-align:left; margin:0.3em 0 0.9em;"><strong style="color:#1a1a1a;">Supervised.</strong> The label says UP. Backpropagate the gradient that makes UP more likely, immediately, for every frame. The multiplier on that gradient is 1, because somebody knew.</p>
+
+      <img src="attachments/karpathy/rl.png" alt="Policy gradients: no label, so the eventual reward supplies the sign" style="width:100%; border:1px solid var(--border); border-radius:4px;">
+      <p style="font-size:0.62em; line-height:1.6; color:var(--muted); text-align:left; margin:0.3em 0 0;"><strong style="color:#1a1a1a;">Policy gradients.</strong> No label. So sample an action, compute the identical gradient, and hold it &mdash; until the end of the game decides whether to add it or subtract it. Diagrams: Karpathy (2016).</p>
+    </div>
+
+    <aside class="notes">
+      Put these two up together and say almost nothing. The visual point is that the machinery is identical: same network, same forward pass, same backward pass. The only difference is the number the gradient gets multiplied by before it is applied.
+      Upstairs, that number is 1 and it arrives instantly, because a person wrote the answer down. Downstairs it is the return, it might be negative, and it does not arrive for another eighty frames.
+      That is the entire lecture, in two diagrams. If a student has followed nothing else, this is the slide to send them away with.
+      Worth naming the consequence: because the downstairs multiplier is noisy, you need enormously more samples to average the noise out. Sample inefficiency is not a flaw in the implementation. It is the price of not having a teacher.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 27 · REINFORCE, live ══ -->
+  <section>
+    <div class="label">Play &middot; the counterpart to Lecture 1</div>
+    <h2 style="margin-bottom:0.15em; font-size:1.4em;">REINFORCE, live</h2>
+    <p style="font-size:0.66em; color:var(--muted); margin:0 0 0.4em; font-style:italic;">Last week you watched a curve find points somebody had placed. Here there are no points.</p>
+
+    <iframe src="demos/reinforce-gridworld.html" style="width:100%; height:calc(76vh - 110px); min-height:400px; border:1px solid var(--border); border-radius:6px; background:#fff;" title="REINFORCE learning a gridworld policy, live"></iframe>
+
+    <aside class="notes">
+      This is the slide the lecture has been missing, and it is the direct answer to slide R3. Run it and talk over it — it needs about twenty seconds of silence first, then two or three minutes of commentary.
+      <strong>Before you press RUN</strong>, make them look at the arrows. Four per cell, all the same length. That is a policy with no opinion about anything: at every square it is equally willing to go in any direction. Nobody has told it where the goal is, that falling in is bad, or even that the walls are walls.
+      <strong>Press ONE EPISODE a few times first.</strong> It flails. Most episodes end in the pit or run out of time. Point at the trajectory line — green if it reached the goal, red if it fell in — and say the thing from the REINFORCE slide: every action on a green line just became slightly more likely, and every action on a red line slightly less. Including the irrelevant ones. Nobody decided which mattered.
+      <strong>Then press RUN.</strong> Watch the arrows lengthen and commit. Within a few hundred episodes a path forms; the average-return line climbs; the success rate goes from about nothing to near a hundred per cent. The key observation: <em>at no point did anyone supply a correct action for any square.</em> The arrows you are looking at are entirely the residue of outcomes.
+      Two things worth pointing out while it runs. First, it usually learns to avoid the pit long before it learns the fastest route — bad news travels faster than good, because there is more of it. Second, if it finds a mediocre path early it can sit on it for a long time, which is exploitation beating exploration, and is the dilemma from slide 15 happening in front of them.
+      <strong>The honest caveat, said out loud:</strong> this is a sixty-four-square table, not a neural network. It converges in seconds because the state space is tiny. Pong has a hundred thousand inputs and takes days. The algorithm is identical; the difference is entirely how much there is to search.
+      If someone asks what would happen with the goal reward moved further away or the grid made larger: that is the sparse-reward problem, and it is the next slide but one.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 28 · Outside the arcade ══ -->
+  <section>
+    <div class="label">Why any of this matters</div>
+    <h2 style="margin-bottom:0.7em;">The same reversal, outside the arcade</h2>
+
+    <div class="two-col" style="gap:2em; align-items:start;">
+      <div style="text-align:left;">
+        <p style="font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:0.12em; color:var(--muted); margin:0 0 0.6em;">THE CLASSICAL ROBOTICS PIPELINE</p>
+        <pre class="ascii" style="font-size:0.55em;">detect the cup
+      |
+estimate its pose
+      |
+compute a grasp point
+      |
+plan a hand trajectory
+      |
+execute</pre>
+        <p style="font-size:0.72em; color:var(--muted); margin-top:0.6em;">Every stage designed, and every stage a place to fail.</p>
+      </div>
+      <div style="text-align:left;">
+        <p style="font-family:'Courier New',monospace; font-size:0.62em; letter-spacing:0.12em; color:var(--muted); margin:0 0 0.6em;">THE OTHER WAY</p>
+        <pre class="ascii" style="font-size:0.55em;">camera pixels
+proprioception
+tactile signals
+      |
+  neural network
+      |
+motor commands
+      |
+did the cup end up
+in the hand?</pre>
+        <p style="font-size:0.72em; color:var(--muted); margin-top:0.6em;">One learned function, and a verdict.</p>
+      </div>
+    </div>
+
+    <p style="font-size:0.78em; max-width:780px; margin:1.2em auto 0; line-height:1.7;">
+      <span style="color:var(--muted);">Replace</span> human-designed representation &rarr; human-written rules &rarr; action<br>
+      <span style="color:var(--muted);">with</span> <strong>raw sensory data &rarr; actions &rarr; eventual reward.</strong>
+    </p>
+
+    <aside class="notes">
+      Land the generalisation, because until now every example has been a game and a sceptical student is entitled to say so.
+      Be fair to the left column: it is how working robots are actually built, it is inspectable, it is debuggable, and when it fails you can tell which stage failed. The right column is opaque and it needs an enormous number of attempts. The genuine argument for it is that the left column requires somebody to know how to specify each stage, and for most interesting tasks nobody does.
+      This is also the place to say where the field has gone since: the strongest current robotics results are hybrids, and large pre-trained models are increasingly used to supply the prior knowledge that pure pixel RL had to learn from scratch. That is the frontier and it is where the interesting jobs are.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 29 · Four things wrong with all of this ══ -->
+  <section>
+    <div class="label">Being honest about it</div>
+    <h2 style="margin-bottom:0.6em;">Four things wrong with all of this</h2>
+
+    <div style="max-width:880px; margin:0 auto; text-align:left; font-size:0.68em; line-height:1.68;">
+      <div class="two-col" style="gap:1.6em; align-items:start;">
+        <div>
+          <div class="card" style="margin-bottom:0.8em;">
+            <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.1em; color:#b08d4a; margin:0 0 0.45em;">1 &middot; IT IS ABSURDLY SLOW</p>
+            <p style="margin:0;">Karpathy's Pong takes days on one machine. You learn it in a minute. The gap is prior knowledge &mdash; you already know about objects, motion and bouncing, and the network builds all of it from scratch, every time.</p>
+          </div>
+          <div class="card">
+            <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.1em; color:#b08d4a; margin:0 0 0.45em;">2 &middot; THE REWARD IS A LIE YOU WRITE</p>
+            <p style="margin:0;">A boat-racing agent found it scored more by spinning in circles collecting pickups than by finishing the race. It was not broken. It maximised exactly what it was given. <strong>Every reward function anyone has written for an open-ended task has been gameable.</strong></p>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:0.8em;">
+            <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.1em; color:#b08d4a; margin:0 0 0.45em;">3 &middot; IF NOTHING SCORES, NOTHING LEARNS</p>
+            <p style="margin:0;">Montezuma's Revenge: climb down, fetch the key, open the door. DQN scored <strong>zero</strong>. Random flailing never once reaches the key, so there is never anything to reinforce. Thorndike's cat only escapes because the crate is small.</p>
+          </div>
+          <div class="card">
+            <p style="font-family:'Courier New',monospace; font-size:0.82em; letter-spacing:0.1em; color:#b08d4a; margin:0 0 0.45em;">4 &middot; IT NEEDS A WORLD IT CAN RUIN</p>
+            <p style="margin:0;">Millions of episodes assume failure is free. It is free in Atari and free in Go. It is not free in a car, a hospital, or a portfolio &mdash; and the places we most want this are exactly the places you cannot fail a million times.</p>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin:1em 0 0; background:var(--soft); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:6px; padding:0.8em 1.1em; font-size:1.02em;">
+        The pattern underneath all four: this method is spectacular wherever the world can be <strong>simulated cheaply</strong> and the outcome <strong>scored exactly</strong>. Reality is neither.
+      </p>
+    </div>
+
+    <aside class="notes">
+      Do not skip this one to save time. Everything they have seen for eighty minutes has worked, and a room that leaves believing reinforcement learning always works has been mistaught.
+      One and three they have already felt — one from the demo, three from Montezuma if you mention it. Two is the one to spend time on, because it is the deepest. The boat is CoastRunners, it is on OpenAI's blog, and if you have thirty seconds of the clip it earns its place; the laugh is worth more than the argument. Then connect it back to slide 11: you asked them to write the reward function for "be a good doctor", and this is what happens when somebody tries.
+      Four is the one they will not have thought of, and it is the reason this is not yet in the world in the way the headlines suggest. Say it plainly: the method needs a world in which failure is free, and the interesting problems are all in worlds where it is not.
+      If the room is strong, the follow-up worth planting: every one of these four is somebody's current research programme, and three of them are unsolved. That is the next slide.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 30 · Everything after today ══ -->
+  <section>
+    <div class="label">What we did not cover, and where the field is</div>
+    <h2 style="margin-bottom:0.55em;">Everything after today</h2>
+
+    <div style="max-width:900px; margin:0 auto; text-align:left; font-size:0.66em; line-height:1.66;">
+      <table class="cmp" style="font-size:1.02em;">
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a; width:27%;">Learn a value function too</td>
+          <td><strong>Actor&ndash;critic.</strong> Keep the policy, add a network that predicts how good a state is, and use it as the baseline. Advantage estimation is built from exactly the &delta; on the dopamine slide. <span style="color:var(--muted);">A2C, then PPO &mdash; which is what fine-tunes the chatbot you used this morning.</span></td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">Learn the world itself</td>
+          <td><strong>Model-based RL.</strong> Learn to predict what happens next, then plan inside your own model instead of in the real world. <span style="color:var(--muted);">Fixes the &ldquo;failure must be free&rdquo; problem, if the model is good enough. MuZero, Dreamer, world models.</span></td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">Make exploration deliberate</td>
+          <td><strong>Curiosity and novelty bonuses.</strong> Reward the agent for reaching states it has not seen, rather than waiting for the world to reward it. <span style="color:var(--muted);">This is what eventually beat Montezuma's Revenge &mdash; not more compute.</span></td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">Learn without acting</td>
+          <td><strong>Offline RL.</strong> Learn a better policy from a fixed log of somebody else's decisions, with no environment to experiment in. <span style="color:var(--muted);">The route into medicine, education and anything where you cannot run the experiment.</span></td>
+        </tr>
+        <tr>
+          <td style="font-style:normal; color:#1a1a1a;">Get the reward from a person</td>
+          <td><strong>RLHF.</strong> Train a model of human preference and use it as the reward. <span style="color:var(--muted);">It works, it built the assistants you use &mdash; and it reintroduces exactly the ceiling we spent today escaping.</span></td>
+        </tr>
+      </table>
+      <p style="margin:0.9em 0 0; color:var(--muted); font-style:italic; font-size:0.98em;">The last row is the interesting one, and it is where the final slides go.</p>
+    </div>
+
+    <aside class="notes">
+      Ninety seconds. This is a map, not a lesson &mdash; they cannot learn any of it from a table, and that is not what it is for. What it is for is that a student who wants to go further knows five real search terms by the time they leave the room.
+      Take the first row properly, because it is the only one that is a direct continuation of what they just coded: add a value network to REINFORCE and you have actor&ndash;critic; that is where the δ from the dopamine slide reappears; PPO is that with a clipped update. Everything modern is in this row.
+      Then point at the last row and stop, because it is the hinge into the close. RLHF replaced the value function with a human rater. It works spectacularly. And a human rater cannot score a move that nobody understands &mdash; which means the ceiling is back. That is the argument of the final slide, and you have just set it up.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 31 · Where we are ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:880px; margin:0 auto; text-align:left;">
+      <p style="font-family:'Courier New',monospace; font-size:0.5em; letter-spacing:0.22em; color:#555; margin:0 0 1.2em;">WHERE WE ARE</p>
+
+      <p style="font-size:0.78em; line-height:1.8; color:#ccc; margin:0 0 1.1em;">
+        What actually changed between last week and this week is one thing: <strong style="color:#fff;">where the number comes from that tells the machine it was wrong.</strong>
+      </p>
+
+      <div class="two-col" style="gap:2.2em; align-items:start; font-size:0.66em; line-height:1.75;">
+        <div>
+          <p style="font-family:'Courier New',monospace; font-size:0.78em; letter-spacing:0.12em; color:#6e9ec8; margin:0 0 0.6em;">LAST WEEK</p>
+          <p style="margin:0 0 0.5em; color:#bbb;">A person supplies it, for every example, immediately, and it says exactly what the answer should have been.</p>
+          <p style="margin:0; color:#777;">That is a strong signal, and the machine can be made very good very quickly. It also means the machine can only ever compress what a person already knew, and the label is the ceiling.</p>
+        </div>
+        <div>
+          <p style="font-family:'Courier New',monospace; font-size:0.78em; letter-spacing:0.12em; color:#c8a96e; margin:0 0 0.6em;">THIS WEEK</p>
+          <p style="margin:0 0 0.5em; color:#bbb;">The world supplies it, long after the decision, and it says only how the whole thing went.</p>
+          <p style="margin:0; color:#777;">That is a far weaker signal and it costs enormously more experience to use. In exchange there is no label, and therefore no ceiling &mdash; the machine can end up somewhere nobody could have pointed to.</p>
+        </div>
+      </div>
+
+      <p style="margin-top:1.5em; padding-top:1.1em; border-top:1px solid #222; font-size:0.68em; line-height:1.8; color:#999;">
+        Everything today followed from that one substitution. Credit assignment is hard <em>because</em> the number arrives late. Exploration is a problem <em>because</em> the machine chooses its own data. Reward hacking happens <em>because</em> somebody had to write the number down. They are not four separate difficulties &mdash; they are one difficulty, seen from four sides.
+      </p>
+
+      <p style="margin-top:1.1em; font-size:0.72em; color:#ddd; line-height:1.7; font-style:italic;">
+        Try things. See what happens. Do more of what worked. It is the crudest idea in this course, it needs millions of attempts to work at all, and it is the only one that has ever produced a move no human would have played.
+      </p>
+    </div>
+    <aside class="notes">
+      This is the summary slide, so do not read it &mdash; they can read. Say the top line, give them fifteen seconds with the two columns, then talk to the paragraph at the bottom, which is the part that is genuinely worth their attention.
+      The thing to land is that today's four difficulties are not a list. They are one substitution, seen from four sides. Credit assignment exists because the number is late. Exploration exists because the agent's own choices decide what data it ever sees. Reward hacking exists because a human had to write the objective down. Sample inefficiency exists because a verdict carries so much less information than an answer. If they leave with the list, they have memorised something; if they leave with the substitution, they can derive the list.
+      The trade in the two columns is worth naming explicitly, because students want one method to be better: a strong signal buys speed and buys you a ceiling. A weak signal costs you speed and removes the ceiling. Neither is the right answer in general, which is why the last slides are about combining them.
+      The closing sentence can be said flatly. It has earned itself by now and does not need any emphasis from you.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 32 · Two bets ══ -->
+  <section>
+    <div class="label">Where the field stood</div>
+    <h2 style="margin-bottom:0.8em;">Two bets, running side by side</h2>
+    <div class="two-col" style="gap:2em;">
+      <div class="card" style="text-align:left; font-size:0.76em; line-height:1.7;">
+        <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--blue); margin:0 0 0.6em;">HINTON &middot; BRAIN &middot; OPENAI</p>
+        <p style="margin:0 0 0.5em;">Sequence models, supervised and self-supervised learning, enormous corpora, enormous compute.</p>
+        <p style="margin:0; color:var(--muted);">Learn from what humanity has already written down.</p>
+      </div>
+      <div class="card" style="text-align:left; font-size:0.76em; line-height:1.7;">
+        <p style="font-family:'Courier New',monospace; font-size:0.8em; letter-spacing:0.1em; color:var(--green); margin:0 0 0.6em;">HASSABIS &middot; SILVER &middot; DEEPMIND</p>
+        <p style="margin:0 0 0.5em;">Agents, environments, reward, deep reinforcement learning.</p>
+        <p style="margin:0; color:var(--muted);">Learn from what the machine does and what happens next.</p>
+      </div>
+    </div>
+    <p style="font-size:0.76em; color:var(--muted); margin-top:1.3em; max-width:720px; margin-left:auto; margin-right:auto;">In 2016 these looked like competing programmes. They are currently converging: a modern language model is pre-trained the first way and then finished the second way.</p>
+    <aside class="notes">
+      A short orientation slide. The reason it is here is that students arrive knowing only the left column, and think AI means "train a big model on the internet". It is worth them seeing that the other tradition existed, produced the most spectacular results of the decade, and has not gone away.
+      The last line is the payoff and you can afford to say it plainly: RLHF, and everything that came after it, is the second column applied to the first. The reward model is a learned stand-in for the human verdict. The thing they use every day is a hybrid.
+      On its new footing, this slide opens the closing arc rather than closing the history. They have now done the notebook, so the left column is no longer abstract to them: they have just trained something the second way. The line to land is that the two columns stopped being rivals — and the next slide is the argument that the second one is where the ceiling is not.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 33 · 2025 — the argument, and the bet ══ -->
+  <section data-background-color="#0a0a0a">
+    <div style="color:#f5f5f5; max-width:960px; margin:0 auto;">
+
+      <p style="font-family:'Courier New',monospace; font-size:0.5em; letter-spacing:0.22em; color:#555; margin:0 0 1em; text-align:left;">2025 &mdash; THE ARGUMENT IS WRITTEN DOWN, AND THEN BET ON</p>
+
+      <div class="two-col" style="align-items:start; gap:1.8em;">
+
+        <!-- April 2025 · the paper -->
+        <div style="text-align:left;">
+          <img src="attachments/era-of-experience-paper.png" alt="Welcome to the Era of Experience, Silver and Sutton, April 2025" style="width:100%; height:150px; object-fit:cover; object-position:top; border-radius:3px; display:block;">
+          <p style="font-family:'Courier New',monospace; font-size:0.48em; letter-spacing:0.16em; color:#c8a96e; margin:0.9em 0 0.5em;">APRIL 2025</p>
+          <p style="font-size:0.63em; line-height:1.65; color:#bbb; margin:0 0 0.5em;">Three sources of data, in order: <strong style="color:#ddd;">simulation</strong> &mdash; superhuman, stuck in the box; <strong style="color:#ddd;">human data</strong> &mdash; general, and capped; <strong style="color:#ddd;">experience</strong> &mdash; the agent's own, improving as it does.</p>
+          <p style="font-size:0.62em; line-height:1.6; color:#888; margin:0; border-left:2px solid #2a2a2a; padding-left:0.8em; font-style:italic;">Human-centric RL &ldquo;has imposed a new ceiling: agents cannot go beyond existing human knowledge.&rdquo;</p>
+        </div>
+
+        <!-- Nov 2025 / Apr 2026 · the company -->
+        <div style="text-align:left;">
+          <img src="attachments/ineffable-site.jpg" alt="Ineffable Intelligence" style="width:100%; height:150px; object-fit:cover; object-position:top; border-radius:3px; display:block;">
+          <p style="font-family:'Courier New',monospace; font-size:0.48em; letter-spacing:0.16em; color:#c8a96e; margin:0.9em 0 0.5em;">NOVEMBER 2025 &middot; $1.1BN AT $5.1BN, APRIL 2026</p>
+          <p style="font-size:0.63em; line-height:1.65; color:#bbb; margin:0 0 0.5em;">Silver left DeepMind and raised it with no product. A <strong style="color:#ddd;">superlearner</strong> that discovers all knowledge from its own experience &mdash; no human data &mdash; and rediscovers language, science and mathematics on the way past.</p>
+          <p style="font-size:0.62em; line-height:1.6; color:#888; margin:0; border-left:2px solid #2a2a2a; padding-left:0.8em;">The name is a prediction: what it learns <span style="color:#c8a96e;">&ldquo;will be too profound to be described by human language.&rdquo;</span></p>
+        </div>
+      </div>
+
+      <div style="margin-top:1.4em; padding-top:1em; border-top:1px solid #222; text-align:center;">
+        <p style="font-family:'Georgia',serif; font-style:italic; font-size:0.95em; color:#fff; margin:0; line-height:1.4;">A machine can learn to do a thing that nobody knows how to do.</p>
+        <p style="font-size:0.58em; color:#666; margin:0.5em 0 0; line-height:1.7;">You last saw that sentence under a Go board. Move 37 was one move. The bet now is that everything left worth discovering is on that side of the language.</p>
+      </div>
+    </div>
+
+    <aside class="notes">
+      One slide, two halves, five minutes. Do the left first and do not linger on it.
+      <strong>Left, April 2025.</strong> Silver and Sutton write this lecture down as a prediction. The three eras are the structure: simulation gave superhuman and narrow; human data gave general and capped; experience is the claim that you can have both. The prosaic reason for the shift is that the good human data is nearly used up. The real reason is that new theorems are outside the corpus by definition.
+      The ceiling quote is the sentence to read aloud, and then say what makes it sharp: it is an attack on RLHF from the RL side. RLHF replaced the value function with a human rater, and a human rater cannot score a move nobody understands. That is move 37 restated as a design constraint, and it is the honest reason a chat model does not produce one. AlphaProof is the one-line example if you want it — a hundred thousand human proofs in, a hundred million self-generated out, IMO silver medal.
+      <strong>Right, six months later.</strong> He left and raised $1.1bn on it. Give the facts in one breath and spend your time on the name instead. Ineffable is a word about the limits of language, adopted as a prediction. Everything in Lecture 1 was learned from things humans had already written down. Move 37 was the first hint that the interesting part might not be sayable at all.
+      <strong>Then be straight with them.</strong> The paper is a position paper, not a result. The company has no product and no paper. And the known weakness is the one from slide 28, which the paper itself concedes: the method has never made the jump from closed problems with an exact reward to open problems without one. That is the whole question and it is unresolved.
+      Last line, if you want one: most of the people who will answer it are currently about your age.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 34 · Then we run it ══ -->
+  <section>
+    <div class="label">Next</div>
+    <h2 style="margin-bottom:0.6em;">Then we run it</h2>
+    <div style="max-width:760px; margin:0 auto; text-align:left; font-size:0.79em; line-height:1.75;">
+      <p style="margin:0 0 0.7em;">A notebook, an environment, and a policy small enough to read in one sitting.</p>
+      <p style="margin:0 0 0.5em; color:var(--muted);">Gymnasium and the Atari environments &mdash; what the observation is, what the environment is, what the policy network is.</p>
+      <p style="margin:0 0 0.5em; color:var(--muted);">The preprocessing function, written by hand, and the difference-of-frames trick.</p>
+      <p style="margin:0; color:var(--muted);">A policy in PyTorch: 6400 &rarr; 200 &rarr; 1, trained by policy gradients, watched as it improves.</p>
+    </div>
+    <p style="margin-top:1.4em;">
+      <a class="demo-link" href="http://karpathy.github.io/2016/05/31/rl/" target="_blank">Karpathy &middot; Pong from Pixels &rarr;</a>
+      <a class="demo-link" href="https://www.youtube.com/watch?v=2pWv7GOvuf0" target="_blank">Silver &middot; RL Course, Lecture 1 &rarr;</a>
+      <a class="demo-link" href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank">Sutton &amp; Barto &rarr;</a><br>
+      <a class="demo-link" href="https://storage.googleapis.com/deepmind-media/Era-of-Experience%20/The%20Era%20of%20Experience%20Paper.pdf" target="_blank">Silver &amp; Sutton &middot; Era of Experience &rarr;</a>
+      <a class="demo-link" href="https://cs.stanford.edu/people/karpathy/reinforcejs/" target="_blank">REINFORCEjs &middot; play with it &rarr;</a>
+    </p>
+    <aside class="notes">
+      Keep this to thirty seconds. It is a signpost, not a section. Tell them the notebook will be shared and that the only thing they need to bring is a willingness to watch a number go up very slowly.
+    </aside>
+  </section>
+
+  <!-- ══ SLIDE 35 · Contact ══ -->
+  <section>
+    <div class="two-col" style="align-items:start; gap:3em;">
+      <div>
+        <div class="label">Further curiosity</div>
+        <h2 style="margin-top:0.4em;">Interested in this question?</h2>
+        <p style="font-size:0.9em; line-height:1.8; margin-top:0.8em;">If today raised more questions than it answered &mdash; that's the right reaction.</p>
+        <p style="font-size:0.9em; line-height:1.8;">I'm looking for students who want to go deeper: research, independent study, or building something in this space.</p>
+        <p style="font-size:0.9em; line-height:1.8; margin-top:0.5em;">Get in touch.</p>
+      </div>
+      <div>
+        <div class="card" style="font-size:0.88em; line-height:2.1;">
+          <p style="font-family:'Courier New',monospace; font-size:0.7em; color:var(--muted); letter-spacing:0.1em; margin-bottom:0.6em;">PIYUSH AHUJA</p>
+          <p style="color:var(--muted); font-size:0.85em; margin-bottom:1em; line-height:1.6;">Independent researcher &amp; educator.<br>IIT Delhi &middot; Oxford &middot; Cambridge.</p>
+          <p>📧 <a href="mailto:piyushahuja.in@gmail.com">piyushahuja.in@gmail.com</a></p>
+          <p>🌐 <a href="https://piyushahuja.com" target="_blank">piyushahuja.com</a></p>
+          <p>🐦 <a href="https://x.com/piyushahuja_in" target="_blank">@piyushahuja_in</a></p>
+          <p>💼 <a href="https://linkedin.com/in/piyush-ahuja-2006041b" target="_blank">LinkedIn</a></p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      Keep this brief. Say what you're interested in and let them come to you.
+    </aside>
+  </section>
+
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SCROLL VIEW
+════════════════════════════════════════════ -->
+<div id="scroll-view">
+  <div class="label">Lecture 2</div>
+  <h1>Learning Without a Teacher</h1>
+  <p style="color:#666; font-style:italic;">How a machine learns to do a thing that nobody knows how to do.</p>
+
+  <h2>The question, again</h2>
+  <p>Lecture one opened on a sentence: <em>there are artifacts you can build out of sand that convert energy into intelligence</em>. It answered half of it — the half about where the intelligence goes once it is in the machine. This lecture is about the other half.</p>
+  <p>The recap runs through three things you already have. First, the list of what these machines do: read handwritten digits, transcribe speech, find every pedestrian in a frame, read a CT scan, fold a protein, play Go better than anyone alive. Ask of each one whether a person could have written down the right answer, and the list splits cleanly. For the first five, somebody sat down and supplied it. For the sixth, nobody on earth has it.</p>
+  <p>Second, Cybenko's theorem: one hidden layer can approximate any continuous function to arbitrary precision, which is why that list is not surprising. Every item on it is a function from inputs to outputs — camera feed to steering angle, amino acid sequence to atomic coordinates, board state to probability of winning. The theorem promises that a network computing each of them <em>exists</em>.</p>
+  <p>Which leaves the gap this lecture lives in. A function existing is not the same as a function being teachable. For the CT scan there is a radiologist to say what the answer was. For the winning probability of a Go position there is nobody.</p>
+  <p>Third, the regression demo. Watch the curve snap onto the points and then look at the points: every one of those dots is an answer somebody supplied. Drag one and the curve follows it, obediently and immediately, to wherever you put it. The network has no opinion about where the dot should be. It has only the dot.</p>
+  <p class="pullquote">A machine can learn to do a thing that nobody knows how to do.</p>
+
+  <h2>Where lecture one left us</h2>
+  <p>McCulloch and Pitts gave us a unit that computes and cannot learn. Rosenblatt made it learn, and the whole of his advance sits in one line: <em>w &larr; w + &eta;(t &minus; y)x</em>. Read the middle term. <em>t</em> is what the answer should have been, <em>y</em> is what the machine said, and the gap between them is a signal that knows which way is wrong. Backpropagation, thirty years later, changes almost nothing about this — it carries the same signed error back through more layers.</p>
+  <p>Which means every system in lecture one was standing on a pile of answers. MNIST is 60,000 images and 60,000 human-written labels; the intelligence in those labels existed before the network was switched on.</p>
+
+  <h2>Where that contract runs out</h2>
+  <p>Ask, for four problems, whether a person could write down the correct answer. Is this digit a 7? Yes, in a second. Is there a pedestrian in this frame? Yes, slower, but a person can draw the box. What is the best move in this Go position? Nobody knows — the strongest player alive can give you an opinion, and opinions are what we are trying to beat. How should this arm move, right now, to pick up that cup? Nobody can write it down; you can only say whether the cup ended up in the hand.</p>
+  <p>For the bottom half of that list there is no target. There is only, much later and much vaguer: that went well, or that went badly.</p>
+  <p>So there are three kinds of learning signal. Hebb's rule gets no feedback at all and reinforces mistakes as cheerfully as successes. Rosenblatt's rule gets <em>instructive</em> feedback: you are told the answer you should have given, immediately, for every example. Reinforcement learning gets <em>evaluative</em> feedback: one number saying how well it went, not what you should have done instead, and often not until hundreds of decisions later.</p>
+
+  <h2>2010 — the bet</h2>
+  <p>Demis Hassabis did not begin with a method. He began with the problem of intelligence and treated everything else as instrumental. A serious junior chess player and a programmer at the same time, he has described reading a programming book in Foyles at around eleven and writing an Othello opponent at home because chess was beyond the machine. The question he has repeated since: what is my brain doing when I solve these problems, and could a machine do the same thing?</p>
+  <p>His route: the brain is the one existing proof that general intelligence is physically possible, so spend years reverse-engineering some of its principles — not copying neurons, but identifying useful computational principles and converting them into algorithms. The principle he singles out as decisive is the link between dopamine prediction-error signals and temporal-difference reinforcement learning. If brains already implement something like RL, building intelligence around RL is not an obviously crazy bet.</p>
+  <p>Shane Legg's account is that the cover of the 2010 investor plan carried one sentence: <em>build the world's first artificial general intelligence.</em> Hassabis paraphrases it as: step one, solve intelligence; step two, use it to solve everything else. Underneath sat five claims — intelligence can be understood algorithmically; general intelligence requires learning rather than hand-programmed behaviour; the brain offers useful hints; an agent should perceive an environment, learn a representation, act, receive feedback and improve; and increasing compute will make increasingly general learning algorithms practical.</p>
+
+  <h2>2013 &amp; 2015 — DQN</h2>
+  <p>They did not give it the rules of Breakout, a representation of the paddle, the position of the ball, or an algorithm for where to move. They gave it pixels, the score, and the controller. Then they ran the same architecture across a shelf of different games.</p>
+  <p>Hassabis's account of watching it: after about thirty minutes, hopeless. After an hour, visibly improving. After a couple of hours, competent. After several hours it dug a tunnel up the side of the wall and put the ball behind the bricks, where it scored on its own. Nobody told it that strategy existed, or that there was a wall, or that there was a <em>behind</em>.</p>
+  <p>The intended claim was not "an AI plays Atari". It was that the same learning algorithm can take raw sensory data from many different environments and work out which actions lead to reward without being rewritten for each one. The 2013 workshop paper covered seven games; the 2015 <em>Nature</em> paper reported one agent across 49, above human level on about half. Suleyman's line: really the thing that changed everything for us.</p>
+
+  <h2>2014 — the acquisition</h2>
+  <p>Google announced the purchase in January 2014. Terms were private: contemporary reports put it around £400m or $500m-plus, later reconstructions at roughly $650m. The company was four years old and had shipped no product, only a workshop paper about Atari. A condition of the sale was the creation of an ethics and safety board, which in 2014 was an unusual thing for anybody to insist on.</p>
+
+  <h2>2015–2018 — AlphaGo</h2>
+  <p>October 2015: AlphaGo beats the professional Fan Hui 5–0, the first time a program had beaten a pro on a full board without a handicap; DeepMind keeps it quiet until publication. January 2016: the <em>Nature</em> paper. March 2016: Lee Sedol, 4–1, watched by more than 200 million people. In game two, move 37 — a shoulder hit on the fifth line where every book says the fourth. The commentators assumed a bug; Lee Sedol left the room and took roughly fifteen minutes over his reply; the move was later judged to have won the game, with one estimate putting the chance of a human playing it at about one in ten thousand. It could not have been trained in. No human label contained it. (Game four is the honest counterweight: Lee Sedol's move 78, the divine move, which AlphaGo had no good answer to.)</p>
+  <p>October 2017: AlphaGo Zero is given the rules and nothing else, plays itself from random, and within three days beats the version that beat Lee Sedol. It rediscovered centuries of human joseki, played them for a while, then discarded several for something it preferred. The loop — self-play, experience, a better policy, harder games — contains no external supply of data: the system generates its own curriculum. Then AlphaZero ran the same method on chess and shogi and got the same result.</p>
+  <p>Two institutional bets were now visible: Hinton, Brain and later OpenAI on sequence models, huge corpora and huge compute, learning from what humanity has already written down; Hassabis, Silver and DeepMind on agents, environments and reward, learning from what the machine does and what happens next. They are currently converging — a modern language model is pre-trained the first way and finished the second.</p>
+
+  <h2>What reinforcement learning actually is</h2>
+  <p>Strip away Go, Breakout and robots and the same shape is left: an agent, an environment, and three arrows. At every tick the agent sees a state, picks an action, and the world replies with a number and a new state. Everything the agent cannot choose is environment — including, for a robot, its own motors.</p>
+  <p>Five words carry the subject. <strong>State</strong>: what the agent can see now, which is rarely the whole truth about the world. <strong>Action</strong>: what it can do — for Pong, UP or DOWN. <strong>Reward</strong>: a single number from the environment, usually zero. <strong>Policy</strong>: the agent's behaviour, a function from state to action — and this is the thing the neural network is. Last week the network mapped image to label; here it maps state to action. <strong>Return</strong>: not the next reward but the discounted sum of all future rewards. That last distinction is where sacrifice becomes possible: if the objective were the next reward, no agent would ever give up a piece in chess.</p>
+  <p>Underneath sits the reward hypothesis, which Silver states plainly and calls a hypothesis rather than a theorem: all goals can be described by the maximisation of expected cumulative reward. Fly a helicopter: +1 for the intended trajectory, −100 for crashing. Beat a world champion: +1 for winning. Make a robot walk: +1 per metre, −100 for falling. The challenge worth putting to a room: write down the reward function for "be a good doctor". Cure rate rewards refusing hard cases. Patient satisfaction rewards prescribing opioids. Every proposal is gameable, and the gaming is documented and real.</p>
+
+  <h2>Where the idea came from</h2>
+  <p>In 1898 Edward Thorndike put cats in a crate that opened when a latch was tripped and timed their escapes. The first escape was always an accident; put the same cat back and the scrabbling gradually narrowed onto the latch. Plotted against attempt number, escape time falls smoothly — no flash of insight, just a shift in what the animal was likely to do. His law of effect, 1911: responses followed by satisfaction become more likely, responses followed by discomfort less likely.</p>
+  <p>That sentence already contains the field. It is selectional rather than instructive — nobody shows the cat the latch, the consequence merely re-weights what it already did. It is associative — the re-weighting is tied to the situation. And it needs exploration — if the cat never scrabbles, the latch is never tripped and there is nothing to reinforce. Skinner built forty years of psychology on it and gave us the word <em>reinforcement</em>.</p>
+  <p>The computational thread arrives separately. Samuel's draughts program (1959) improved by playing. Bellman (1957) supplied the recursion that mattered: the value of a state is the reward you get now plus the value of the state you end up in. It looks circular and is merely recursive, and it is the same move as a chess player saying a position is good because it leads to good positions. Bellman's method needs a model of the environment — you must know what every action does in every state — which is fine for a small grid and useless for Atari.</p>
+  <p>Sutton and Barto's contribution, through the 1980s, was that you can get the same recursion out of experience alone, by sampling, with no model.</p>
+
+  <h2>Temporal difference: learning from a guess</h2>
+  <p>You leave the office at six and estimate you will be home by half past. Ten minutes later you hit stationary traffic and your estimate moves to seven. You have just learned something. You are not home yet, and nobody told you the answer.</p>
+  <p>What you learned from was the change between two successive predictions. That difference is a usable error signal even though the outcome is an hour away: <em>&delta; = r + V(next state) − V(this state)</em>. What I expected, against what I now expect given what just happened. Nudge the old estimate toward the new one, repeat, and value seeps backwards down a chain of states until a move made forty seconds ago can be credited for a point scored now. The alternative — wait until you get home, then update — works, is called a Monte Carlo method, and throws away everything you learned on the bypass.</p>
+
+  <h2>1997 — the brain appears to compute δ</h2>
+  <p>Before the result itself, the lineage, because the obvious guess about it is wrong. Reinforcement learning did not begin as an algorithm that biology later happened to match. It began in animal psychology and stayed there for most of a century: Thorndike's crate in 1898, Skinner's reinforcement through the 1930s, and then Rescorla and Wagner in 1972, who formalised the idea that animals learn only when events violate their expectations. That is prediction error stated as psychology, sixteen years before Sutton, and the temporal-difference rule is close to an extension of their model with timing added. Sutton's δ came down that line; what he added was that it could be made to run.</p>
+  <p>Which is what makes the next step unusual. Lecture 1's tradition began at the cell — Cajal's discrete neurons, abstracted by McCulloch and Pitts into a threshold unit, given a learning rule by Rosenblatt — and it never left that level. This tradition began at the level of the whole animal, was formalised into an algorithm, and then came back to the cell.</p>
+  <p>Wolfram Schultz had been recording from dopamine neurons in monkeys given juice, and the firing pattern made no sense as a reward signal because it kept moving. Read as a prediction error it made perfect sense. Unexpected juice: a burst of firing. A tone followed repeatedly by juice: the burst migrates backwards onto the tone, and the juice itself stops producing any response, because it was predicted. Tone, then no juice: firing drops below baseline at exactly the moment the juice was due.</p>
+  <p>The third condition is the convincing one. A pure reward signal has no reason to go negative when nothing happens. Something in there is holding an expectation and subtracting. This does not show the brain runs TD learning; it shows one specific signal behaves, quantitatively, the way a prediction error would — a narrower claim, and more impressive for being narrow. It is the result Hassabis points to when explaining why DeepMind was built on RL.</p>
+
+  <h2>Four things that make this a different subject</h2>
+  <p>Silver's list. There is no supervisor, only a reward signal. Feedback is delayed, sometimes by hundreds of steps. Time matters — the data is a sequence, not a pile, and the independence assumption from last week is simply false. And the agent's actions determine the data it sees: a policy that never moves left never learns that the left was better. The model's incompetence censors its own training data, which has no analogue in supervised learning and is why exploration is a first-class problem.</p>
+  <p>Hence the dilemma. Exploit: do the best thing you currently know, collect the reward you are confident of, learn nothing. Explore: try something uncertain, probably do worse today, possibly find something better than anything you knew. You cannot do both with one action and you must decide afresh at every step, forever. The crudest workable answer is ε-greedy — best known action, except that some small fraction of the time, act at random — which is what DQN used. Move 37 exists because the system spent an enormous share of its training doing things no sensible player would try.</p>
+
+  <h2>Pong from pixels</h2>
+  <p>The agent is not told what Pong is. It never receives ball position = (83, 42) or paddle_y = 97. It receives what a camera receives: 210 × 160 × 3, which is 100,800 numbers, thirty times a second. It has two choices, UP or DOWN. It gets +1 when it scores, −1 when it concedes, and 0 for the several hundred frames in between.</p>
+  <p>It is never told that some pixels constitute a ball, that other pixels are its paddle, that objects persist between frames, that the ball has a velocity, that it bounces, that a paddle can intercept it, that moving up now can matter fifty frames later, or what a good move is.</p>
+  <p>Compare how you would have written it. Given ball_x, ball_y, ball_velocity_y and paddle_y, a decent rule is four lines. But notice who did the intelligent work: you supplied the concepts ball, position, velocity, paddle, and you decided which four numbers out of a hundred thousand mattered. With pixel RL you supply image → ??? → ??? → UP/DOWN, and a reward. The ??? has to emerge.</p>
+
+  <h3>Credit assignment</h3>
+  <pre>t = 1     UP       reward 0
+t = 2     UP       reward 0
+t = 3     DOWN     reward 0
+      ...
+t = 47    UP       reward 0
+      ...
+t = 81             reward +1</pre>
+  <p>Eighty decisions, one number at the end. Some of those actions were the reason, most were irrelevant, a few were probably survivable mistakes — and the reward does not say which, while you adjust roughly a million parameters on the strength of it. This is the credit assignment problem, and it is what makes reinforcement learning hard in a way nothing last week was hard. With backpropagation the error is available at the output on every example, so credit through the layers is a calculus exercise. Here the error is one number, arriving late, for an entire episode.</p>
+
+  <h3>What actually reaches the network</h3>
+  <pre>                SHAPE              CONTENT
+
+obs             210x160x3          RGB pixels
+                     |  [35:195]
+obs_cropped     160x160x3          crop off score + borders
+                     |  [::2, ::2, 0]
+obs_downsampled  80x80             one channel, every other pixel
+                     |  != 144, != 109, != 0
+obs_binary       80x80             True / False
+                     |  .flatten()
+obs_flattened     6400             a vector</pre>
+  <p>Read the right-hand column as deliberate losses: remove irrelevant screen regions, throw away three quarters of the pixels, throw away two colour channels, throw away exact intensities, keep only object-or-background, flatten the picture into a vector. 100,800 numbers become 6,400, and Karpathy's network is then 6400 → 200 → 1 — one hidden layer, one output read as the probability of moving UP. Flattening destroys the fact that adjacent pixels are adjacent; the network rediscovers that too.</p>
+  <p>Two questions worth asking about this pipeline. Why throw away colour? Because someone looked at the problem and decided it carried no information — a human prior, quietly smuggled into a story about learning from raw pixels. And how can a single frame tell you which way the ball is going? It cannot: the actual input is the difference between consecutive frames, which hands the network motion for free. That is an inductive bias, and it is the clearest example of one you will find.</p>
+
+  <h3>The algorithm</h3>
+  <p>Play a whole game under your current policy. If the outcome was better than usual, make every action you took slightly more likely. If it was worse, make them all slightly less likely. Repeat a few hundred thousand times. It reinforces good and irrelevant actions indiscriminately — but irrelevant actions appear in winning and losing games alike, so their pushes cancel, while the ones that mattered accumulate. Nobody assigns the credit; the statistics do, slowly. Karpathy is honest about the cost: a few days of training on one machine, for a game a person picks up in a minute.</p>
+
+  <h2>The same reversal, outside the arcade</h2>
+  <p>Classical robotics: detect the cup, estimate its pose, compute a grasp point, plan a trajectory, execute. Every stage designed, every stage a place to fail. The other way: camera pixels, proprioception and tactile signals into a neural network, out come motor commands, and the only question asked is whether the cup ended up in the hand.</p>
+  <p>Replace <em>human-designed representation → human-written rules → action</em> with <em>raw sensory data → actions → eventual reward</em>. Be fair to the classical pipeline: it is inspectable, debuggable, and when it fails you know which stage failed. The real argument against it is that it requires somebody to know how to specify each stage, and for most interesting tasks nobody does.</p>
+
+  <h2>2025 — the argument written down, and then bet on</h2>
+  <p>In April 2025 Silver and Sutton published <em>Welcome to the Era of Experience</em>, a chapter for the MIT Press book <em>Designing an Intelligence</em>. It is the lecture you have just heard, argued as a prediction.</p>
+  <p>Their frame is three sources of data. <strong>Simulation</strong> — backgammon, Atari, Go — gave closed worlds with one precise reward, and produced superhuman play that could not leave the box. <strong>Human data</strong> gave the opposite trade: sweeping generality, and a ceiling, because everything in the corpus was written by a person. <strong>Experience</strong> is the proposed third: data the agent generates by interacting with its environment, which has the property that it improves as the agent does, where a fixed corpus does not.</p>
+  <p>The prosaic reason for the shift is that the good human data is nearly used up — the high-quality sources that can still improve a strong model have mostly been consumed, and progress from supervised learning on them is measurably slowing. The interesting reason is the other one: new theorems and new technologies lie outside the boundary of what anyone has written down, so no amount of that corpus reaches them.</p>
+  <p>They name four things that have to change. Agents must inhabit <strong>streams</strong> of experience that run for a lifetime rather than a chat turn. Their actions and observations must be <strong>grounded in an environment</strong> rather than mediated entirely by human dialogue. Their <strong>rewards</strong> must come from the world rather than from a human's prejudgement of the answer. And they must <strong>plan and reason over consequences</strong> rather than over chains of English sentences.</p>
+  <p>The sharpest sentence is aimed at RLHF, from the RL side: human-centric RL "has imposed a new ceiling on the agent's performance: agents cannot go beyond existing human knowledge." RLHF replaced the value function with a human rater, and a human rater cannot score a move that nobody understands. That is move 37 restated as a design constraint, and it is the honest reason a chat model does not produce one.</p>
+  <p>Their worked example is AlphaProof, which reached silver-medal standard at the International Mathematical Olympiad. It began with roughly a hundred thousand formal proofs written by human mathematicians over many years, then generated a hundred million more by interacting with a formal proving system. The human data was the ignition, not the fuel.</p>
+  <p>Two hedges are worth carrying. It is a position paper, not an experiment. And its unsolved part is the one the robotics slide already named: rewards in reality are plural and ill-defined, and "ground them in real-world signals" is a direction rather than a method.</p>
+
+  <h3>Six months later — ineffable</h3>
+  <p>David Silver — who wrote the lecture course, led AlphaGo and AlphaZero, and co-wrote that paper — left DeepMind in January 2026, having founded a company the previous November. In April 2026 it raised $1.1 billion at a $5.1 billion valuation, from Sequoia, Lightspeed, Index, Google and Nvidia, with no product. Sixteen years after a business plan whose cover read <em>build the world's first artificial general intelligence</em>, the same wager, narrower and louder.</p>
+  <p>Its stated mission is "a superlearner that discovers all knowledge from its own experience, from elementary motor skills through to profound intellectual breakthroughs" — no human data, rediscovering language, science and mathematics, and then continuing past them.</p>
+  <p>The name carries the argument. Among the company's stated beliefs is that the knowledge such a system acquires "will be too profound to be described by human language". <em>Ineffable</em>: that which cannot be put into words.</p>
+  <p class="pullquote">A machine can learn to do a thing that nobody knows how to do.</p>
+  <p>That was the first line of the lecture. Move 37 was one move that no human could have supplied and that none could entirely explain. The bet now is that everything left worth discovering sits on that side of the language — and it is a bet, not a result. The method is spectacular wherever the world can be simulated cheaply and the outcome scored exactly, and reality is neither. Whether "discover all knowledge from experience" survives contact with a domain that has no reward function is the open question of the subject, and it is genuinely open.</p>
+
+  <h2>Further</h2>
+  <p><a href="http://karpathy.github.io/2016/05/31/rl/" target="_blank">Karpathy — Deep Reinforcement Learning: Pong from Pixels</a></p>
+  <p><a href="https://www.youtube.com/watch?v=2pWv7GOvuf0" target="_blank">David Silver — RL Course, Lecture 1</a></p>
+  <p><a href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank">Sutton &amp; Barto — Reinforcement Learning: An Introduction</a></p>
+  <p><a href="https://storage.googleapis.com/deepmind-media/Era-of-Experience%20/The%20Era%20of%20Experience%20Paper.pdf" target="_blank">Silver &amp; Sutton — Welcome to the Era of Experience (2025)</a></p>
+  <p><a href="https://deepmind.google/the-podcast/" target="_blank">Google DeepMind: The Podcast — “Is Human Data Enough?” with David Silver</a></p>
+  <p><a href="https://www.ineffable.ai/" target="_blank">Ineffable Intelligence — the stated mission and beliefs</a></p>
+  <p><a href="https://cs.stanford.edu/people/karpathy/reinforcejs/" target="_blank">Karpathy — REINFORCEjs: GridWorld DP, GridWorld TD, PuckWorld and WaterWorld, in the browser</a></p>
+  <p><a href="https://www.youtube.com/watch?v=WXuK6gekU1Y" target="_blank">AlphaGo — The Movie (move 37 at roughly 49:00)</a></p>
+  <p><a href="https://openai.com/index/emergent-tool-use/" target="_blank">OpenAI — Emergent tool use from multi-agent interaction</a></p>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/plugin/notes/notes.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    controls: true,
+    progress: true,
+    center: true,
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'none',
+    width: 1100,
+    height: 700,
+    margin: 0.08,
+    plugins: [ RevealNotes ]
+  });
+
+  function toggleMode() {
+    const btn = document.getElementById('scroll-toggle');
+    if (document.body.classList.contains('scroll-mode')) {
+      document.body.classList.remove('scroll-mode');
+      btn.textContent = 'scroll view';
+      window.scrollTo(0, 0);
+    } else {
+      document.body.classList.add('scroll-mode');
+      btn.textContent = 'slide view';
+      window.scrollTo(0, 0);
+    }
+  }
+</script>
+</body>
+</html>

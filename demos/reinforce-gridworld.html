@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REINFORCE, live</title>
+<style>
+  :root{--ink:#1a1a1a;--muted:#666;--faint:#aaa;--border:#e5e5e5;--soft:#f7f7f7;
+        --gold:#c8a96e;--blue:#6e9ec8;--green:#5aa85a;--red:#c0503f;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:var(--ink);font-family:Georgia,serif}
+  .wrap{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;
+        max-width:1020px;margin:0 auto;padding:10px 14px}
+  canvas{border:1px solid var(--border);border-radius:5px;display:block}
+  .panel{font-size:13px;line-height:1.6}
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+  button{font-family:'Courier New',monospace;font-size:11.5px;letter-spacing:.06em;
+         background:var(--soft);border:1px solid var(--border);border-radius:4px;
+         padding:6px 13px;cursor:pointer;color:var(--ink)}
+  button:hover{background:#ededed}
+  button.go{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+  input[type=range]{width:118px}
+  .stat{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f2f2f2}
+  .stat b{font-family:'Courier New',monospace;font-size:13px;font-weight:normal}
+  .k{color:var(--muted);font-size:12px}
+  .tag{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.14em;
+       color:var(--muted);text-transform:uppercase;margin:14px 0 5px}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.62;font-style:italic}
+  .verdict{font-family:'Courier New',monospace;font-size:12px;padding:2px 8px;border-radius:3px}
+  .win{background:#eaf5ea;color:var(--green)} .lose{background:#fbeceb;color:var(--red)}
+  .neutral{background:var(--soft);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="c" width="430" height="430"></canvas>
+  <div class="panel">
+    <div class="row">
+      <button id="go" class="go">RUN</button>
+      <button id="step">ONE EPISODE</button>
+      <button id="reset">RESET</button>
+    </div>
+    <div class="row">
+      <span class="k">speed</span><input type="range" id="speed" min="1" max="60" value="12">
+      <span class="k" id="spd">12 ep/s</span>
+    </div>
+
+    <div class="tag">what the agent has learned</div>
+    <div class="stat"><span class="k">episodes played</span><b id="ep">0</b></div>
+    <div class="stat"><span class="k">last run from the corner</span><b id="last">—</b></div>
+    <div class="stat"><span class="k">average return (last 50)</span><b id="avg">—</b></div>
+    <div class="stat"><span class="k">reaches the goal from the corner</span><b id="wr">—</b></div>
+
+    <div class="tag">average return per episode</div>
+    <canvas id="spark" width="250" height="62" style="border:1px solid var(--border);border-radius:4px"></canvas>
+
+    <div class="tag">reading the picture</div>
+    <p class="note">
+      Each cell shows the policy: four arrows, each as long as the probability of taking it.
+      At the start every arrow is the same length — the agent has no opinion about anything.
+      It practises from a random square each episode; the line drawn is a separate run from
+      the black dot in the corner, green if it reached the goal, red if it fell in.
+    </p>
+    <p class="note">
+      Nothing here is told the right move. It plays, it gets one number at the end, and
+      every action in that episode is nudged by how the episode went.
+    </p>
+  </div>
+</div>
+
+<script>
+// ── world ────────────────────────────────────────────────────────────────
+const N=8, CORNER=[0,7], GOAL=[7,0];
+const WALL=new Set(['2,5','2,4','2,3','5,2','5,3','5,4']);
+const PIT =new Set(['5,5','2,1']);
+const A=[[0,-1],[1,0],[0,1],[-1,0]];              // up right down left
+const key=(x,y)=>x+','+y, sid=(x,y)=>y*N+x;
+const free=(x,y)=>x>=0&&y>=0&&x<N&&y<N&&!WALL.has(key(x,y));
+const spawnable=(x,y)=>free(x,y)&&!PIT.has(key(x,y))&&!(x===GOAL[0]&&y===GOAL[1]);
+
+// ── policy ───────────────────────────────────────────────────────────────
+const nS=N*N, ALPHA=0.10, GAMMA=0.99, STEP=-0.005, MAXT=150, CLIP=6;
+let th, ep, rets, baseline, lastTraj, lastR, corner, recent;
+
+function reset(){
+  th=new Float64Array(nS*4); ep=0; rets=[]; baseline=0;
+  lastTraj=[]; lastR=null; corner=[]; recent=[];
+  draw(); spark(); stats();
+}
+function pi(s){
+  let m=-1e9; for(let a=0;a<4;a++) m=Math.max(m,th[s*4+a]);
+  const e=[0,0,0,0]; let z=0;
+  for(let a=0;a<4;a++){e[a]=Math.exp(th[s*4+a]-m); z+=e[a];}
+  for(let a=0;a<4;a++) e[a]/=z;
+  return e;
+}
+function sample(p){ let r=Math.random(), c=0; for(let a=0;a<4;a++){ c+=p[a]; if(r<c) return a; } return 3; }
+
+// one rollout. learn=true trains from a random square; learn=false just
+// walks from the bottom-left corner so the room has one number to watch.
+function rollout(learn){
+  let x,y;
+  if(learn){ do{ x=Math.floor(Math.random()*N); y=Math.floor(Math.random()*N);}while(!spawnable(x,y)); }
+  else { x=CORNER[0]; y=CORNER[1]; }
+  const S=[],Ac=[],R=[],traj=[[x,y]];
+  let reached=false, fell=false;
+  for(let t=0;t<MAXT;t++){
+    const s=sid(x,y), p=pi(s), a=sample(p);
+    let nx=x+A[a][0], ny=y+A[a][1];
+    if(!free(nx,ny)){ nx=x; ny=y; }
+    let rew=STEP, done=false;
+    if(nx===GOAL[0]&&ny===GOAL[1]){ rew=1; done=true; reached=true; }
+    else if(PIT.has(key(nx,ny))){ rew=-1; done=true; fell=true; }
+    S.push(s); Ac.push(a); R.push(rew);
+    x=nx; y=ny; traj.push([x,y]);
+    if(done) break;
+  }
+  if(learn){
+    const G=new Array(R.length); let g=0;
+    for(let t=R.length-1;t>=0;t--){ g=R[t]+GAMMA*g; G[t]=g; }
+    for(let t=0;t<S.length;t++){
+      const s=S[t], a=Ac[t], p=pi(s), adv=G[t]-baseline;
+      for(let k=0;k<4;k++){
+        let v=th[s*4+k]+ALPHA*adv*((k===a?1:0)-p[k]);
+        th[s*4+k]=v>CLIP?CLIP:(v<-CLIP?-CLIP:v);
+      }
+    }
+    baseline += 0.02*(R.reduce((a,b)=>a+b,0)-baseline);
+  }
+  return {traj, reached, fell, total:R.reduce((a,b)=>a+b,0)};
+}
+
+function episode(){
+  const r=rollout(true);
+  ep++; rets.push(r.total); if(rets.length>6000) rets.shift();
+  recent.push(r.total); if(recent.length>50) recent.shift();
+  // every few episodes, watch it try from the corner — no learning
+  if(ep%4===0){
+    const c=rollout(false);
+    lastTraj=c.traj; lastR=c.reached?'win':(c.fell?'lose':'out');
+    corner.push(c.reached?1:0); if(corner.length>40) corner.shift();
+  }
+}
+
+// ── drawing ──────────────────────────────────────────────────────────────
+const cv=document.getElementById('c'), g=cv.getContext('2d');
+const SZ=430/N;
+function draw(){
+  g.clearRect(0,0,430,430);
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const px=x*SZ, py=y*SZ;
+    if(WALL.has(key(x,y))){ g.fillStyle='#e8e8e8'; g.fillRect(px,py,SZ,SZ); }
+    else if(PIT.has(key(x,y))){ g.fillStyle='#fbeceb'; g.fillRect(px,py,SZ,SZ);
+      g.fillStyle='#c0503f'; g.font='11px Georgia'; g.textAlign='center';
+      g.fillText('−1', px+SZ/2, py+SZ/2+4); }
+    else if(x===GOAL[0]&&y===GOAL[1]){ g.fillStyle='#eaf5ea'; g.fillRect(px,py,SZ,SZ);
+      g.fillStyle='#3d8b3d'; g.font='12px Georgia'; g.textAlign='center';
+      g.fillText('+1', px+SZ/2, py+SZ/2+4); }
+    g.strokeStyle='#eee'; g.strokeRect(px,py,SZ,SZ);
+  }
+  // policy arrows
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    if(!free(x,y)||PIT.has(key(x,y))||(x===GOAL[0]&&y===GOAL[1])) continue;
+    const p=pi(sid(x,y)), cx=x*SZ+SZ/2, cy=y*SZ+SZ/2;
+    for(let a=0;a<4;a++){
+      const L=p[a]*SZ*0.80;
+      if(L<1.4) continue;
+      g.strokeStyle='rgba(200,169,110,'+Math.min(1,0.22+p[a]*1.5)+')';
+      g.lineWidth=1+p[a]*2.6;
+      g.beginPath(); g.moveTo(cx,cy);
+      g.lineTo(cx+A[a][0]*L, cy+A[a][1]*L); g.stroke();
+    }
+  }
+  // last trajectory
+  if(lastTraj.length>1){
+    g.strokeStyle = lastR==='win' ? 'rgba(90,168,90,.75)' : lastR==='lose' ? 'rgba(192,80,63,.7)' : 'rgba(150,150,150,.45)';
+    g.lineWidth=2.2; g.beginPath();
+    lastTraj.forEach(([x,y],i)=>{ const cx=x*SZ+SZ/2, cy=y*SZ+SZ/2;
+      i? g.lineTo(cx,cy) : g.moveTo(cx,cy); });
+    g.stroke();
+  }
+  // corner marker — where we watch it try
+  g.fillStyle='#1a1a1a';
+  g.beginPath(); g.arc(CORNER[0]*SZ+SZ/2, CORNER[1]*SZ+SZ/2, 4.5, 0, 7); g.fill();
+}
+const sp=document.getElementById('spark'), sg=sp.getContext('2d');
+function spark(){
+  sg.clearRect(0,0,250,62);
+  if(rets.length<2) return;
+  const W=250,H=62,n=Math.min(rets.length,600);
+  const d=[]; const src=rets.slice(-n);
+  const w=Math.max(3,Math.floor(n/60));
+  for(let i=0;i<n;i+=w){ const c=src.slice(i,i+w); d.push(c.reduce((a,b)=>a+b,0)/c.length); }
+  const mn=Math.min(...d,-1.2), mx=Math.max(...d,1.05);
+  sg.strokeStyle='#eee'; sg.beginPath();
+  const zy=H-4-((0-mn)/(mx-mn))*(H-8); sg.moveTo(0,zy); sg.lineTo(W,zy); sg.stroke();
+  sg.strokeStyle='#c8a96e'; sg.lineWidth=1.6; sg.beginPath();
+  d.forEach((v,i)=>{ const x=i/(d.length-1||1)*W, y=H-4-((v-mn)/(mx-mn))*(H-8);
+    i? sg.lineTo(x,y) : sg.moveTo(x,y); });
+  sg.stroke();
+}
+function stats(){
+  document.getElementById('ep').textContent=ep;
+  const L=document.getElementById('last');
+  if(lastR===null){ L.innerHTML='<span class="verdict neutral">—</span>'; }
+  else if(lastR==='win'){ L.innerHTML='<span class="verdict win">reached +1</span>'; }
+  else if(lastR==='lose'){ L.innerHTML='<span class="verdict lose">fell in −1</span>'; }
+  else { L.innerHTML='<span class="verdict neutral">ran out of time</span>'; }
+  document.getElementById('avg').textContent = recent.length
+    ? (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(2) : '—';
+  document.getElementById('wr').textContent = corner.length>=8
+    ? Math.round(100*corner.reduce((a,b)=>a+b,0)/corner.length)+'%' : '—';
+}
+
+// ── loop ─────────────────────────────────────────────────────────────────
+let running=false, acc=0, t0=0;
+function frame(t){
+  if(!running) return;
+  const dt=(t-t0)/1000; t0=t;
+  acc += dt*(+document.getElementById('speed').value);
+  let n=Math.floor(acc); acc-=n; n=Math.min(n,40);
+  for(let i=0;i<n;i++) episode();
+  if(n){ draw(); spark(); stats(); }
+  requestAnimationFrame(frame);
+}
+document.getElementById('go').onclick=e=>{
+  running=!running; e.target.textContent=running?'PAUSE':'RUN';
+  e.target.classList.toggle('go',!running);
+  if(running){ t0=performance.now(); acc=0; requestAnimationFrame(frame); }
+};
+document.getElementById('step').onclick=()=>{ episode(); draw(); spark(); stats(); };
+document.getElementById('reset').onclick=()=>{
+  running=false; const b=document.getElementById('go');
+  b.textContent='RUN'; b.classList.add('go'); reset();
+};
+document.getElementById('speed').oninput=e=>{
+  document.getElementById('spd').textContent=e.target.value+' ep/s'; };
+reset();
+</script>
+</body>
+</html>
