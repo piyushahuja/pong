@@ -51,16 +51,26 @@ bootstrap cell as its second cell: open the notebook from GitHub, run that cell
 first, and it clones the repo and installs what Colab is missing. It is a no-op
 when you run the same notebook locally.
 
-It installs `gymnasium` and `ale-py`, and the `pong` package itself with
-`--no-deps`. Nothing else. Colab already provides a working CUDA build of torch,
-and the bootstrap uses `uv pip install --system --python sys.executable` so the
-packages land in the kernel that is actually running the notebook. No `pip`
-anywhere.
+The whole cell is five lines, and there is no `pip` in it:
 
 ```python
-uv pip install --quiet --system --python <the kernel> gymnasium ale-py
-uv pip install --quiet --system --python <the kernel> -e . --no-deps
+![ -d /content/pong-pytorch ] || git clone -q <this repo> /content/pong-pytorch
+%cd /content/pong-pytorch
+!curl -LsSf https://astral.sh/uv/install.sh | sh
+!~/.local/bin/uv pip install -q --system --python {sys.executable} gymnasium ale-py
+!~/.local/bin/uv pip install -q --system --python {sys.executable} -e . --no-deps
 ```
+
+It installs `gymnasium`, `ale-py`, and the `pong` package with `--no-deps`.
+Nothing else: Colab already provides a working CUDA build of torch, and replacing
+it would mean downloading the entire CUDA stack for no benefit to anything taught
+here.
+
+Two details in those lines. `--python {sys.executable}` targets the kernel that
+is actually running the cell, which is stricter than `--system` alone — normally
+the same interpreter in Colab, but only one of the two is guaranteed to be. And
+the `[ -d ... ] ||` test makes re-running the cell harmless instead of printing a
+clone failure.
 
 `--mode human` will not work in Colab — a live pygame window needs an OS window
 a notebook cannot host. Use the inline animation instead:
