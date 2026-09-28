@@ -17,6 +17,11 @@ import ale_py
 FRAMESKIP = (2, 5)
 STICKY = 0.25
 
+# The two Atari controller inputs that move our paddle. The policy emits one
+# probability, and it maps onto exactly these.
+ACTION_UP = 2
+ACTION_DOWN = 3
+
 
 # ------------------------------------------------------------
 # Environment
@@ -41,15 +46,15 @@ def make_env(render_mode=None, sticky=STICKY):
 
 # ------------------------------------------------------------
 # Preprocessing
-# Reference NumPy version:
 #
-# def prepro(I):
-#     I = I[35:195]
-#     I = I[::2, ::2, 0]
-#     I[I == 144] = 0
-#     I[I == 109] = 0
-#     I[I != 0] = 1
-#     return I.astype(np.float).ravel()
+# The whole operation in five lines, for orientation before reading the
+# commented version below:
+#
+#     frame = frame[35:195]          # crop the scoreboard and the floor
+#     frame = frame[::2, ::2, 0]     # halve both dimensions, keep one channel
+#     frame[frame == 144] = 0        # background colour one
+#     frame[frame == 109] = 0        # background colour two
+#     frame[frame != 0] = 1          # ball and paddles
 # ------------------------------------------------------------
 
 def preprocess(observation, device=None):

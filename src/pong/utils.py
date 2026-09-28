@@ -36,7 +36,6 @@ PROJECT_ROOT = find_project_root()
 
 CONFIG_DIR = PROJECT_ROOT / "configs"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
-ASSET_DIR = PROJECT_ROOT / "assets"
 
 
 # ------------------------------------------------------------

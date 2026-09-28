@@ -111,7 +111,7 @@ def collect_metadata(device=None, extra=None):
     edits is not reproducible from that commit alone, and recording the fact
     is the difference between a usable result and a misleading one.
     """
-    import torch                              # local: keeps this module importable without torch
+    import torch          # imported here only because nothing else in this module needs it
 
     commit = _git("rev-parse", "HEAD")
     status = _git("status", "--porcelain")
@@ -157,23 +157,25 @@ class Run:
     def __init__(self, directory, metrics_fields):
         self.dir = Path(directory)
         self.checkpoint = self.dir / "policy.pt"
-        self._metrics_path = self.dir / "metrics.csv"
+        self.metrics_path = self.dir / "metrics.csv"
         self._metrics_fields = list(metrics_fields)
         self._metrics_file = None
         self._writer = None
         self._started = time.time()
 
-    @property
-    def metrics_path(self):
-        return self._metrics_path
-
     def log(self, **row):
-        """Append one row to metrics.csv, flushed so a killed run keeps it."""
+        """
+        Append one row to metrics.csv, flushed so a killed run keeps it.
+
+        The file is opened on the first call rather than up front, so a run
+        that produced no episodes has no metrics.csv -- which is how discard()
+        tells an empty run from a real one.
+        """
         row.setdefault("elapsed_seconds", round(time.time() - self._started, 1))
 
         if self._writer is None:
-            new = not self._metrics_path.exists()
-            self._metrics_file = open(self._metrics_path, "a", newline="")
+            new = not self.metrics_path.exists()
+            self._metrics_file = open(self.metrics_path, "a", newline="")
             self._writer = csv.DictWriter(
                 self._metrics_file, fieldnames=self._metrics_fields
             )
@@ -199,7 +201,7 @@ class Run:
         """
         self.close()
 
-        if self.checkpoint.exists() or self._metrics_path.exists():
+        if self.checkpoint.exists() or self.metrics_path.exists():
             return False
 
         for child in self.dir.iterdir():

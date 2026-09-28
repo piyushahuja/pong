@@ -36,22 +36,3 @@ from pong.utils import (
     PROJECT_ROOT,
     get_device,
 )
-
-__all__ = [
-    "CHECKPOINT",
-    "CHECKPOINT_DIR",
-    "CONFIG_DIR",
-    "D",
-    "FRAMESKIP",
-    "H",
-    "OUTPUT_DIR",
-    "PROJECT_ROOT",
-    "Policy",
-    "STICKY",
-    "default_checkpoint",
-    "get_device",
-    "load_policy",
-    "make_env",
-    "preprocess",
-    "rollout",
-]

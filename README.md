@@ -46,34 +46,56 @@ Use it everywhere except when you are deliberately changing dependencies.
 ### In Google Colab
 
 Colab is the one case where the kernel exists before the project does, so
-`uv sync` cannot be the entry point. Each notebook in `notebooks/` carries
-a bootstrap cell as its second cell: open the notebook from GitHub, run that
-cell first, and it clones the repo and installs what Colab lacks. It is a no-op
+`uv sync` cannot be the entry point. Every notebook in `notebooks/` carries a
+bootstrap cell as its second cell: open the notebook from GitHub, run that cell
+first, and it clones the repo and installs what Colab is missing. It is a no-op
 when you run the same notebook locally.
 
-By default the bootstrap installs only `gymnasium` and `ale-py`, since Colab
-already ships torch and matplotlib. That takes seconds. Set `EXACT_ENV = True`
-in the cell to install the locked environment instead:
+It installs `gymnasium` and `ale-py`, and the `pong` package itself with
+`--no-deps`. Nothing else. Colab already provides a working CUDA build of torch,
+and the bootstrap uses `uv pip install --system --python sys.executable` so the
+packages land in the kernel that is actually running the notebook. No `pip`
+anywhere.
 
-```bash
-uv export --locked --no-dev --format requirements.txt -o /tmp/pong-req.txt
-pip install -r /tmp/pong-req.txt
+```python
+uv pip install --quiet --system --python <the kernel> gymnasium ale-py
+uv pip install --quiet --system --python <the kernel> -e . --no-deps
 ```
 
-That reproduces the pinned versions exactly, but downloads roughly a gigabyte
-and replaces the torch build Colab ships with. Prefer it when a result needs to
-be reproducible, not when you just want to watch the agent play.
-
-To drive it by hand instead:
+`--mode human` will not work in Colab — a live pygame window needs an OS window
+a notebook cannot host. Use the inline animation instead:
 
 ```python
 from pong import replay
 replay.watch(seed=1)        # HTML5 player, no ffmpeg needed
 ```
 
-`--mode human` will not work in Colab — a live pygame window needs an OS window
-that a notebook cannot host. Use `replay.watch()` instead, which renders to
-`rgb_array` and animates the frames inline.
+### Two levels of reproducibility
+
+Worth being explicit about, because they pull in opposite directions.
+
+**Compatible environment** — the same code, a compatible Python, and the
+project's own dependencies, on top of whatever torch the host already provides.
+This is what the Colab bootstrap does, and it is the right default for teaching:
+it takes seconds, and it uses Colab's CUDA build rather than fighting it.
+
+**Identical environment** — the exact versions in `uv.lock`, including torch and
+its whole CUDA stack. This is what `uv sync --locked` gives you locally. To
+reproduce it somewhere without uv as the project manager:
+
+```bash
+uv export --locked --no-dev --no-emit-project \
+    --format requirements.txt -o requirements.txt
+uv pip install --system -r requirements.txt
+```
+
+`--no-emit-project` matters. Without it the export begins with `-e .`, and since
+every other line carries hashes, pip refuses: hash-checking mode cannot verify an
+editable local directory. Install the project separately, with `--no-deps`.
+
+Reach for this when a specific result has to be reproduced exactly — and if the
+torch or CUDA version materially affects a result, a pinned container or a
+controlled GPU server is a better venue for it than Colab's preconfigured kernel.
 
 ### On someone else's laptop
 
@@ -113,14 +135,18 @@ misconfiguration.
 | File | Says |
 |---|---|
 | `.python-version` | `3.12` — the interpreter uv provisions |
-| `pyproject.toml` | `requires-python = ">=3.12,<3.13"` |
+| `pyproject.toml` | `requires-python = ">=3.12,<3.14"` — 3.12 and 3.13 |
 | `uv.lock` | the exact resolved versions, one per package |
 
-The `requires-python` range is deliberately narrow. When it was `>=3.9`, the
-lockfile had to carry parallel resolutions for every supported interpreter —
-three numpy versions, two matplotlib, three contourpy — and which one you got
-depended on your machine. Pinning to 3.12 collapsed `uv.lock` from 4118 lines
-to 1108 and made "the locked environment" mean one thing.
+The range is deliberately narrow, but not narrower than it has to be. At `>=3.9`
+the lockfile carried parallel resolutions for every interpreter in that range —
+three numpy versions, two matplotlib, three contourpy — and which you got
+depended on your machine; narrowing collapsed `uv.lock` from 4118 lines to 1108.
+
+It allows 3.13 as well as 3.12 because Colab runs 3.13, and a project that
+excludes the interpreter your notebooks run on is not portable, whatever its
+lockfile says. Supporting both costs about 150 lines of lockfile. `.python-version`
+still pins 3.12 as the interpreter uv provisions locally.
 
 ## Layout
 

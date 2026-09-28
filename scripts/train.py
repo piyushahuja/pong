@@ -9,31 +9,27 @@ Train a Pong policy with REINFORCE.
 Every run writes its own directory under outputs/ holding the settings, the
 provenance (commit, seed, device, versions), per-episode metrics and the
 checkpoint. Nothing is written outside it, so two runs never collide.
+
+The training loop at the bottom runs top to bottom, in the same order as the
+notebooks teach it. Everything above it is setup.
 """
 
 import argparse
 from pathlib import Path
 
 import torch
+from torch.distributions import Bernoulli
 
 from pong import experiment
 from pong.checkpoints import default_checkpoint
-from pong.env import make_env, preprocess
+from pong.env import ACTION_DOWN, ACTION_UP, make_env, preprocess
 from pong.model import D, Policy
 from pong.utils import get_device
 
 
-# ------------------------------------------------------------
-# Settings
-#
-# Defaults are the baseline the tracked policy was trained with. A config
-# file overrides them and a command-line flag overrides that, so an
-# experiment is this code plus a configuration rather than a copy of it.
-#
-# Network shape (D) and the environment settings live in the pong
-# package, because play.py and every checkpoint must agree with them.
-# ------------------------------------------------------------
-
+# Settings a config file or a command-line flag may override. The network
+# shape and the environment settings are NOT here: they live in the pong
+# package, because play.py and every saved checkpoint must agree with them.
 DEFAULTS = {
     "hidden": 200,
     "batch_size": 10,
@@ -44,576 +40,311 @@ DEFAULTS = {
     "save_every": 100,
 }
 
-parser = argparse.ArgumentParser(
-    description="Train a Pong policy with REINFORCE.",
-)
-parser.add_argument("--config", help="a TOML file in configs/, by name or path")
-parser.add_argument("--name", help="run directory label (default: the config name)")
-parser.add_argument("--render", action="store_true", help="show the game window")
-parser.add_argument("--device", help='"cpu", "cuda", "mps" or "auto"')
-parser.add_argument("--episodes", type=int, help="stop after this many episodes")
-parser.add_argument("--resume", action="store_true",
-                    help="continue from the newest checkpoint found")
-parser.add_argument("--resume-from", metavar="PATH",
-                    help="continue from a specific checkpoint")
+# How quickly the reported running mean forgets older episodes. Not gamma:
+# gamma discounts rewards inside an episode, this only smooths the number
+# printed between them.
+RUNNING_REWARD_SMOOTHING = 0.99
 
-for _key, _value in DEFAULTS.items():
-    parser.add_argument(
-        f"--{_key.replace('_', '-')}",
-        type=type(_value),
-        default=None,                       # None means "not set on the CLI"
-        help=f"default {_value}",
+# Guards against dividing by zero when every return in an episode is equal.
+NORMALISE_EPSILON = 1e-8
+
+
+def parse_arguments():
+    """Every setting in DEFAULTS is also a flag, so nothing needs a config file."""
+    parser = argparse.ArgumentParser(description="Train a Pong policy with REINFORCE.")
+
+    parser.add_argument("--config", help="a TOML file in configs/, by name or path")
+    parser.add_argument("--name", help="run directory label (default: the config name)")
+    parser.add_argument("--render", action="store_true", help="show the game window")
+    parser.add_argument("--device", help='"cpu", "cuda", "mps" or "auto"')
+    parser.add_argument("--episodes", type=int, help="stop after this many episodes")
+    parser.add_argument("--resume", action="store_true",
+                        help="continue from the newest checkpoint found")
+    parser.add_argument("--resume-from", metavar="PATH",
+                        help="continue from a specific checkpoint")
+
+    for name, default in DEFAULTS.items():
+        parser.add_argument(
+            f"--{name.replace('_', '-')}",
+            type=type(default),
+            default=None,            # None means "not given on the command line"
+            help=f"default {default}",
+        )
+
+    return parser.parse_args()
+
+
+def resolve_settings(arguments):
+    """Layer the settings: defaults, then the config file, then the flags."""
+    config = experiment.load_config(arguments.config) if arguments.config else {}
+    overrides = {name: getattr(arguments, name) for name in DEFAULTS}
+    return experiment.resolve_config(DEFAULTS, config, overrides)
+
+
+def describe_settings(settings, source):
+    """One line naming each setting and which layer it came from."""
+    return ", ".join(
+        f"{name}={value}" + ("" if source[name] == "default" else f" ({source[name]})")
+        for name, value in sorted(settings.items())
     )
 
-args = parser.parse_args()
 
-config = experiment.load_config(args.config) if args.config else {}
-overrides = {key: getattr(args, key) for key in DEFAULTS}
-settings, source = experiment.resolve_config(DEFAULTS, config, overrides)
+def discounted_returns(rewards, gamma, device):
+    """
+    Turn a list of rewards into a weight for every action that preceded them.
 
-# The names the training loop below reads.
-BATCH_SIZE = settings["batch_size"]
-LEARNING_RATE = settings["learning_rate"]
-GAMMA = settings["gamma"]
-DECAY_RATE = settings["decay_rate"]
-SAVE_EVERY = settings["save_every"]
-SEED = settings["seed"]
+    rewards looks like [0, 0, 0, ..., -1, 0, 0, ..., +1, ...]. Walking
+    backwards, each step's weight is its own reward plus the discounted
+    weight of the step after it.
 
-RENDER = args.render
-MAX_EPISODES = args.episodes
+    The running total resets whenever a reward is nonzero, because in Pong a
+    +1 or -1 ends a rally rather than the episode. Credit must not flow back
+    across a scored point: the actions after it had no influence on it.
+    """
+    returns = [0.0] * len(rewards)
+    running = 0.0
 
+    for step in reversed(range(len(rewards))):
+        if rewards[step] != 0:
+            running = 0.0
+        running = running * gamma + rewards[step]
+        returns[step] = running
 
-# ------------------------------------------------------------
-# Device
-#
-# Defaults to CPU; --device auto or PONG_DEVICE=auto to override. See
-# pong.utils.get_device() for why CPU is the default for a network
-# this small.
-# ------------------------------------------------------------
-
-device = get_device(args.device)
-
-print(f"Using device: {device}")
+    return torch.tensor(returns, dtype=torch.float32, device=device)
 
 
-# ------------------------------------------------------------
-# Seeding
-#
-# Only the first reset is seeded. Seeding every reset would make each
-# episode identical, which is not reproducibility but a single game on
-# a loop.
-# ------------------------------------------------------------
-
-torch.manual_seed(SEED)
-
-
-# ------------------------------------------------------------
-# Environment
-# ------------------------------------------------------------
-
-env = make_env("human" if RENDER else None)
-
-observation, info = env.reset(seed=SEED)
-
-
-# ------------------------------------------------------------
-# Run directory
-#
-# Written before training starts, so an interrupted run still records
-# what it was trying to do.
-# ------------------------------------------------------------
-
-run = experiment.start_run(
-    name=args.name or (Path(args.config).stem if args.config else "baseline"),
-    settings=settings,
-    source=source,
-    device=device,
-    metrics_fields=["episode", "reward", "running_mean", "loss", "elapsed_seconds"],
-)
-
-CHECKPOINT = run.checkpoint
-
-print(f"Run directory: {run.dir}")
-print("Settings: " + ", ".join(
-    f"{k}={v}" + ("" if source[k] == "default" else f" ({source[k]})")
-    for k, v in sorted(settings.items())
-))
-
-
-policy = Policy(hidden=settings["hidden"]).to(device)
-
-
-# ------------------------------------------------------------
-# RMSProp
-#
-# This replaces the hand-written rmsprop_cache of the NumPy version.
-# ------------------------------------------------------------
-
-optimizer = torch.optim.RMSprop(
-    policy.parameters(),
-    lr=LEARNING_RATE,
-    alpha=DECAY_RATE,
-    eps=1e-5,
-    momentum=0.0,
-    weight_decay=0.0,
-)
-
-
-# ------------------------------------------------------------
-# Saving
-#
-# One writer, used by the periodic save in step 17 and again when the
-# loop exits. Without the second call a run shorter than save_every
-# episodes would finish having produced no policy at all, and Ctrl+C
-# would throw away everything since the last multiple of save_every.
-# ------------------------------------------------------------
-
-def save_checkpoint():
+def save_checkpoint(path, policy, optimizer, episode, running_reward, settings):
+    """Everything needed to resume, plus the settings that produced it."""
     torch.save(
         {
-            "episode": episode_number,
+            "episode": episode,
             "model_state_dict": policy.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "running_reward": running_reward,
-
-            # Carried so a checkpoint can say what produced it without
-            # its run directory beside it.
             "settings": settings,
         },
-        CHECKPOINT,
+        path,
     )
 
 
-# ------------------------------------------------------------
-# Discount rewards
-#
-# This is almost literally the reference NumPy implementation.
-# ------------------------------------------------------------
-
-def discount_rewards(rewards):
+def load_checkpoint(path, policy, optimizer, settings, device):
     """
-    rewards looks something like:
+    Restore a run, and return where it had got to as (episode, running_reward).
 
-        [0, 0, 0, ..., -1, 0, 0, ..., +1, ...]
-
-    Work backwards and assign discounted future reward
-    to every action.
+    The restore is exact rather than approximate because of where saves land:
+    gradients are stepped every batch_size episodes and checkpoints written
+    every save_every, and save_every is a multiple of batch_size, so a save
+    always happens just after optimizer.zero_grad(). No partially accumulated
+    gradient is ever in flight, which is why these four values are the whole
+    picture.
     """
+    checkpoint = torch.load(path, map_location=device, weights_only=False)
 
-    discounted = [0.0] * len(rewards)
-
-    running_reward = 0.0
-
-    for t in reversed(range(len(rewards))):
-
-        # Pong-specific:
-        #
-        # +1 or -1 means one rally has finished.
-        # Don't propagate reward across rally boundaries.
-        if rewards[t] != 0:
-            running_reward = 0.0
-
-        running_reward = (
-            running_reward * GAMMA
-            + rewards[t]
-        )
-
-        discounted[t] = running_reward
-
-    return torch.tensor(
-        discounted,
-        dtype=torch.float32,
-        device=device,
-    )
-
-
-# ------------------------------------------------------------
-# Training state
-# ------------------------------------------------------------
-
-previous_frame = None
-
-log_probs = []
-rewards = []
-
-episode_number = 0
-reward_sum = 0.0
-running_reward = None
-
-
-# ------------------------------------------------------------
-# Resume from a checkpoint
-#
-# Checkpoints are written every save_every episodes, and save_every is a
-# multiple of batch_size, so a save always lands just after step 15
-# called optimizer.zero_grad(). No partially accumulated gradient is ever
-# in flight at save time, which is what makes resuming exact rather than
-# approximate: weights, optimizer state, episode count and running
-# reward are the whole picture.
-#
-# Resuming is explicit -- --resume or --resume-from PATH -- and off by
-# default. Silently continuing from whatever checkpoint happened to be
-# lying around is how you end up reporting a gamma=0.90 result that was
-# mostly trained at 0.99.
-# ------------------------------------------------------------
-
-resume_from = args.resume_from or (default_checkpoint() if args.resume else None)
-
-if resume_from is not None:
-
-    checkpoint = torch.load(
-        resume_from,
-        map_location=device,
-        weights_only=False,
-    )
-
-    # A checkpoint's weight shapes are fixed at training time, so a
-    # different hidden size cannot be continued -- only compared.
-    saved = checkpoint.get("settings", {})
-    saved_hidden = saved.get("hidden", DEFAULTS["hidden"])
-
-    if saved_hidden != settings["hidden"]:
-        run.discard()
+    # Weight shapes are fixed at training time, so a different hidden size
+    # cannot be continued, only compared against.
+    trained_hidden = checkpoint.get("settings", {}).get("hidden", DEFAULTS["hidden"])
+    if trained_hidden != settings["hidden"]:
         raise SystemExit(
-            f"{resume_from} was trained with hidden={saved_hidden}, "
-            f"but this run wants hidden={settings['hidden']}. "
-            f"Pass --hidden {saved_hidden} to continue it."
+            f"{path} was trained with hidden={trained_hidden}, but this run wants "
+            f"hidden={settings['hidden']}. Pass --hidden {trained_hidden} to continue it."
         )
 
     policy.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-    episode_number = checkpoint["episode"]
-    running_reward = checkpoint["running_reward"]
+    return checkpoint["episode"], checkpoint["running_reward"]
 
-    print(
-        f"Resuming from {resume_from} at episode {episode_number}"
-        + (
-            f" | running reward {running_reward:.3f}"
-            if running_reward is not None
-            else ""
-        )
-    )
 
-else:
+# ----------------------------------------------------------------------
+# Setup
+# ----------------------------------------------------------------------
 
+arguments = parse_arguments()
+settings, source = resolve_settings(arguments)
+
+device = get_device(arguments.device)
+print(f"Using device: {device}")
+
+# Only the first reset is seeded. Seeding every reset would make every episode
+# identical, which is one game on a loop rather than reproducibility.
+torch.manual_seed(settings["seed"])
+
+env = make_env("human" if arguments.render else None)
+observation, _ = env.reset(seed=settings["seed"])
+
+policy = Policy(hidden=settings["hidden"]).to(device)
+
+optimizer = torch.optim.RMSprop(
+    policy.parameters(),
+    lr=settings["learning_rate"],
+    alpha=settings["decay_rate"],
+    eps=1e-5,
+)
+
+# Written before training starts, so an interrupted run still records what it
+# was trying to do.
+run = experiment.start_run(
+    name=arguments.name or (Path(arguments.config).stem if arguments.config else "baseline"),
+    settings=settings,
+    source=source,
+    device=device,
+    metrics_fields=["episode", "reward", "running_mean", "loss", "elapsed_seconds"],
+)
+print(f"Run directory: {run.dir}")
+print("Settings: " + describe_settings(settings, source))
+
+episode_number = 0
+running_reward = None
+
+# Resuming is explicit, and off by default. Silently continuing from whatever
+# checkpoint happened to be lying around is how you end up reporting a
+# gamma=0.90 result that was mostly trained at 0.99.
+resume_from = arguments.resume_from or (default_checkpoint() if arguments.resume else None)
+
+if resume_from is None:
     print("Starting from scratch.")
+else:
+    try:
+        episode_number, running_reward = load_checkpoint(
+            resume_from, policy, optimizer, settings, device
+        )
+    except SystemExit:
+        run.discard()               # nothing was produced; leave no directory
+        raise
+    print(f"Resuming from {resume_from} at episode {episode_number}"
+          + (f" | running reward {running_reward:.3f}" if running_reward is not None else ""))
 
-
-# Important:
-#
-# PyTorch stores gradients in parameter.grad.
-#
-# We deliberately DON'T call optimizer.zero_grad()
-# after every episode.
-#
-# That means gradients accumulate for BATCH_SIZE=10
-# episodes, standing in for the NumPy version's grad_buffer.
-
+# Gradients are deliberately NOT zeroed after each episode. They accumulate for
+# batch_size episodes and are applied in one step, which averages over the
+# noise of a single game.
 optimizer.zero_grad()
 
+previous_frame = None
+episode_log_probs = []
+episode_rewards = []
+episode_reward_sum = 0.0
 
-# ------------------------------------------------------------
-# Main RL loop
-# ------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Training loop
+# ----------------------------------------------------------------------
 
 try:
-
     while True:
 
-        # ----------------------------------------------------
-        # 1. Process current screen
-        # ----------------------------------------------------
-
+        # 1. The network sees motion, not a still frame. One frame cannot say
+        #    which way the ball is travelling, so feed it the difference.
         current_frame = preprocess(observation, device)
 
-
-        # ----------------------------------------------------
-        # 2. Compute difference image
-        #
-        # Reference NumPy version:
-        #
-        # x = cur_x - prev_x
-        # ----------------------------------------------------
-
         if previous_frame is None:
-            x = torch.zeros(
-                D,
-                dtype=torch.float32,
-                device=device,
-            )
+            difference_image = torch.zeros(D, dtype=torch.float32, device=device)
         else:
-            x = current_frame - previous_frame
+            difference_image = current_frame - previous_frame
 
         previous_frame = current_frame
 
+        # 2. One number out: P(move up | this state).
+        probability_up = policy(difference_image)
 
-        # ----------------------------------------------------
-        # 3. Run policy network
-        #
-        # probability means:
-        #
-        #       P(action 2 | current state)
-        # ----------------------------------------------------
-
-        probability = policy(x)
-
-
-        # ----------------------------------------------------
-        # 4. Construct Bernoulli distribution
-        #
-        # Example:
-        #
-        # probability = 0.7
-        #
-        # sampled_action = 1 with probability 0.7
-        # sampled_action = 0 with probability 0.3
-        # ----------------------------------------------------
-
-        distribution = torch.distributions.Bernoulli(
-            probs=probability
-        )
-
-
-        # ----------------------------------------------------
-        # 5. Sample from policy
-        # ----------------------------------------------------
-
+        # 3. Sample an actual choice from that probability, and remember how
+        #    likely the choice we made was. That log-prob is the handle by
+        #    which the action is later made more or less likely.
+        distribution = Bernoulli(probs=probability_up)
         sampled_action = distribution.sample()
+        episode_log_probs.append(distribution.log_prob(sampled_action))
 
+        # 4. Translate the 0/1 sample into an Atari controller input.
+        action = ACTION_UP if sampled_action.item() == 1 else ACTION_DOWN
 
-        # ----------------------------------------------------
-        # 6. Remember log probability of WHAT WE ACTUALLY DID
-        #
-        # If sampled_action == 1:
-        #
-        #     log_prob = log(p)
-        #
-        # If sampled_action == 0:
-        #
-        #     log_prob = log(1-p)
-        #
-        # This replaces the NumPy version's:
-        #
-        #     y - aprob
-        # ----------------------------------------------------
-
-        log_prob = distribution.log_prob(sampled_action)
-
-        log_probs.append(log_prob)
-
-
-        # ----------------------------------------------------
-        # 7. Convert Bernoulli result into Atari action
-        #
-        # This follows the reference implementation:
-        #
-        # action 2 if sample == 1
-        # action 3 if sample == 0
-        # ----------------------------------------------------
-
-        if sampled_action.item() == 1:
-            action = 2
-        else:
-            action = 3
-
-
-        # ----------------------------------------------------
-        # 8. Act in the environment
-        # ----------------------------------------------------
-
-        observation, reward, terminated, truncated, info = (
-            env.step(action)
-        )
-
-        done = terminated or truncated
-
-        reward_sum += reward
-        rewards.append(float(reward))
-
-
-        # ----------------------------------------------------
-        # Print when a Pong point ends
-        # ----------------------------------------------------
+        # 5. Act, and record what came back.
+        observation, reward, terminated, truncated, _ = env.step(action)
+        episode_rewards.append(float(reward))
+        episode_reward_sum += reward
 
         if reward != 0:
-
             marker = " !!!!!!!!" if reward == 1 else ""
+            print(f"episode {episode_number}: point finished, reward {reward:+.0f}{marker}")
 
-            print(
-                f"episode {episode_number}: "
-                f"point finished, "
-                f"reward {reward:+.0f}"
-                f"{marker}"
-            )
+        if not (terminated or truncated):
+            continue
 
+        # ------------------------------------------------------------------
+        # The episode ended: score every decision in it and learn from them.
+        # ------------------------------------------------------------------
 
-        # ----------------------------------------------------
-        # 9. If the whole Pong episode finished...
-        # ----------------------------------------------------
+        episode_number += 1
 
-        if done:
+        # 6. Weight each action by the discounted reward that followed it,
+        #    then normalise so the weights say "better or worse than this
+        #    episode's average" rather than carrying the raw scale. This is a
+        #    crude advantage estimate, and it is what makes some weights
+        #    negative even in an episode that was won overall.
+        returns = discounted_returns(episode_rewards, settings["gamma"], device)
+        returns = (returns - returns.mean()) / (returns.std(unbiased=False) + NORMALISE_EPSILON)
 
-            episode_number += 1
+        # 7. The REINFORCE objective:
+        #
+        #        loss = - sum_t  return_t * log pi(a_t | s_t)
+        #
+        #    Minimising it raises the probability of actions with positive
+        #    weight and lowers it for negative ones. Autograd does the rest.
+        loss = -(torch.stack(episode_log_probs) * returns).sum()
+        loss.backward()
 
+        # 8. Apply the accumulated gradient once per batch of episodes.
+        if episode_number % settings["batch_size"] == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+            print(f"\n*** parameter update after episode {episode_number} ***\n")
 
-            # ------------------------------------------------
-            # 10. Calculate discounted return R_t
-            # ------------------------------------------------
+        # 9. Report and record. running_reward is the number to watch: single
+        #    episodes are far too noisy to judge progress by.
+        if running_reward is None:
+            running_reward = episode_reward_sum
+        else:
+            running_reward = (running_reward * RUNNING_REWARD_SMOOTHING
+                              + episode_reward_sum * (1 - RUNNING_REWARD_SMOOTHING))
 
-            returns = discount_rewards(rewards)
+        print(f"episode {episode_number} finished | "
+              f"reward: {episode_reward_sum:.1f} | "
+              f"running mean: {running_reward:.3f} | "
+              f"loss: {loss.item():.3f}")
 
+        run.log(
+            episode=episode_number,
+            reward=episode_reward_sum,
+            running_mean=round(running_reward, 4),
+            loss=round(loss.item(), 4),
+        )
 
-            # ------------------------------------------------
-            # 11. Normalize returns
-            #
-            # Reference NumPy version:
-            #
-            # discounted_epr -= mean
-            # discounted_epr /= std
-            #
-            # This behaves like a crude advantage estimate.
-            # ------------------------------------------------
+        if episode_number % settings["save_every"] == 0:
+            save_checkpoint(run.checkpoint, policy, optimizer,
+                            episode_number, running_reward, settings)
+            print(f"Saved checkpoint to {run.checkpoint}")
 
-            returns = (
-                returns - returns.mean()
-            ) / (
-                returns.std(unbiased=False) + 1e-8
-            )
+        if arguments.episodes is not None and episode_number >= arguments.episodes:
+            print(f"Reached --episodes {arguments.episodes}; stopping.")
+            break
 
-
-            # ------------------------------------------------
-            # 12. Stack log probabilities
-            # ------------------------------------------------
-
-            episode_log_probs = torch.stack(log_probs)
-
-
-            # ------------------------------------------------
-            # 13. REINFORCE objective
-            #
-            # The NumPy version effectively calculates:
-            #
-            #       return * ∇ log π(a|s)
-            #
-            # In PyTorch we write the scalar objective:
-            #
-            #       loss =
-            #       - Σ return_t log π(a_t | s_t)
-            #
-            # and let autograd differentiate it.
-            # ------------------------------------------------
-
-            loss = -(
-                episode_log_probs * returns
-            ).sum()
-
-
-            # ------------------------------------------------
-            # 14. Backpropagation
-            #
-            # THIS replaces policy_backward().
-            # ------------------------------------------------
-
-            loss.backward()
-
-
-            # ------------------------------------------------
-            # 15. Every 10 episodes update the network
-            #
-            # Since we did not zero gradients above,
-            # .grad contains the sum of gradients from
-            # all 10 episodes.
-            #
-            # This replaces the NumPy version's grad_buffer.
-            # ------------------------------------------------
-
-            if episode_number % BATCH_SIZE == 0:
-
-                optimizer.step()
-
-                optimizer.zero_grad()
-
-                print(
-                    f"\n*** parameter update "
-                    f"after episode {episode_number} ***\n"
-                )
-
-
-            # ------------------------------------------------
-            # 16. Running reward
-            # ------------------------------------------------
-
-            if running_reward is None:
-                running_reward = reward_sum
-            else:
-                running_reward = (
-                    running_reward * 0.99
-                    + reward_sum * 0.01
-                )
-
-            print(
-                f"episode {episode_number} finished | "
-                f"reward: {reward_sum:.1f} | "
-                f"running mean: {running_reward:.3f} | "
-                f"loss: {loss.item():.3f}"
-            )
-
-            run.log(
-                episode=episode_number,
-                reward=reward_sum,
-                running_mean=round(running_reward, 4),
-                loss=round(loss.item(), 4),
-            )
-
-
-            # ------------------------------------------------
-            # 17. Save occasionally
-            # ------------------------------------------------
-
-            if episode_number % SAVE_EVERY == 0:
-
-                save_checkpoint()
-
-                print(
-                    f"Saved checkpoint to {CHECKPOINT}"
-                )
-
-
-            # ------------------------------------------------
-            # 17b. Stop if --episodes was given
-            # ------------------------------------------------
-
-            if MAX_EPISODES is not None and episode_number >= MAX_EPISODES:
-                print(f"Reached --episodes {MAX_EPISODES}; stopping.")
-                break
-
-
-            # ------------------------------------------------
-            # 18. Reset episode memory
-            # ------------------------------------------------
-
-            reward_sum = 0.0
-
-            log_probs = []
-            rewards = []
-
-            observation, info = env.reset()
-
-            previous_frame = None
-
+        # 10. Start the next episode.
+        episode_log_probs = []
+        episode_rewards = []
+        episode_reward_sum = 0.0
+        previous_frame = None
+        observation, _ = env.reset()
 
 finally:
     env.close()
 
-    # Includes KeyboardInterrupt: stopping a run should not lose it.
+    # This runs on Ctrl+C too: stopping a run should not lose it.
     if episode_number > 0:
-        save_checkpoint()
-        print(f"\nSaved checkpoint at episode {episode_number} to {CHECKPOINT}")
+        save_checkpoint(run.checkpoint, policy, optimizer,
+                        episode_number, running_reward, settings)
+        print(f"\nSaved checkpoint at episode {episode_number} to {run.checkpoint}")
         run.close()
         print(f"Run directory: {run.dir}")
     else:
-        # Interrupted before the first episode finished: there is no result,
-        # so do not leave a directory claiming there is one.
+        # Stopped before the first episode finished, so there is no result.
+        # Do not leave a directory claiming there is one.
         run.discard()
         print("\nStopped before the first episode finished; discarded the run.")

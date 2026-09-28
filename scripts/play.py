@@ -1,11 +1,14 @@
 """
 Watch a trained Pong policy play.
 
-    uv run scripts/play.py --mode human     # live pygame window
-    uv run scripts/play.py --mode rgb       # headless; captures frames
+    uv run scripts/play.py                        # a live window, best play
+    uv run scripts/play.py --sample               # act as it did while training
+    uv run scripts/play.py --episodes 5 --seed 1  # five reproducible games
+    uv run scripts/play.py --mode rgb             # no window, scores only
 
-Everything it needs comes from the pong package, so this cannot drift from
-what training produced.
+The network, preprocessing and environment settings all come from the pong
+package, so this cannot drift from what training produced. For an animation
+inside a notebook, use pong.replay.watch() instead.
 """
 
 import argparse
@@ -14,24 +17,51 @@ from pathlib import Path
 import pong
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["human", "rgb"], default="human")
-    ap.add_argument("--checkpoint", type=Path, default=None)
-    ap.add_argument("--sample", action="store_true", help="sample instead of argmax")
-    ap.add_argument("--sticky", type=float, default=0.25)
-    ap.add_argument("--seed", type=int, default=None)
-    ap.add_argument("--episodes", type=int, default=1)
-    args = ap.parse_args()
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Watch a trained Pong policy play.")
 
-    policy = pong.load_policy(args.checkpoint)
-    env = pong.make_env("human" if args.mode == "human" else "rgb_array", args.sticky)
+    parser.add_argument(
+        "--mode", choices=["human", "rgb"], default="human",
+        help="human opens a window; rgb runs headless and just reports the score",
+    )
+    parser.add_argument(
+        "--checkpoint", type=Path, default=None,
+        help="a .pt file to load (default: the newest one found)",
+    )
+    parser.add_argument(
+        "--sample", action="store_true",
+        help="sample from the policy, as during training, instead of taking its best guess",
+    )
+    parser.add_argument(
+        "--sticky", type=float, default=pong.STICKY,
+        help=f"chance the console repeats the previous action (default {pong.STICKY}, "
+             "which is what training used)",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="seed the first episode, so a game can be replayed exactly",
+    )
+    parser.add_argument(
+        "--episodes", type=int, default=1,
+        help="how many games to play",
+    )
+    return parser.parse_args()
+
+
+def main():
+    arguments = parse_arguments()
+
+    policy = pong.load_policy(arguments.checkpoint)
+    render_mode = "human" if arguments.mode == "human" else "rgb_array"
+    env = pong.make_env(render_mode, arguments.sticky)
 
     try:
-        for i in range(args.episodes):
-            seed = None if args.seed is None else args.seed + i
-            print(f"\n--- episode {i} (seed={seed}) ---")
-            pong.rollout(policy, env, greedy=not args.sample, seed=seed)
+        for episode in range(arguments.episodes):
+            # Different seed per episode, so five games are five games rather
+            # than the same one five times.
+            seed = None if arguments.seed is None else arguments.seed + episode
+            print(f"\n--- episode {episode} (seed={seed}) ---")
+            pong.rollout(policy, env, greedy=not arguments.sample, seed=seed)
     finally:
         env.close()
 

@@ -6,8 +6,9 @@ mode: no gradients, and optionally argmax instead of sampling.
 """
 
 import torch
+from torch.distributions import Bernoulli
 
-from pong.env import preprocess
+from pong.env import ACTION_DOWN, ACTION_UP, preprocess
 from pong.model import D
 from pong.utils import get_device
 
@@ -35,34 +36,36 @@ def rollout(
     verbose=False silences the per-point commentary; useful when looping
     over several seeds and you only want the final scores.
 
-    Returns (score_us, score_them, frames, probs).
+    Returns (score_us, score_them, frames, probabilities).
     """
     observation, _ = env.reset(seed=seed)
     previous_frame = None
 
-    frames, probs = [], []
+    frames, probabilities = [], []
     score_us = score_them = 0
 
     for step in range(max_steps):
         current_frame = preprocess(observation, device)
 
-        # The network sees motion, not a still: the difference image.
+        # The network sees motion, not a still frame: feed it the difference.
         if previous_frame is None:
-            x = torch.zeros(D, dtype=torch.float32, device=device)
+            difference_image = torch.zeros(D, dtype=torch.float32, device=device)
         else:
-            x = current_frame - previous_frame
+            difference_image = current_frame - previous_frame
         previous_frame = current_frame
 
-        p = policy(x)
+        probability_up = policy(difference_image)
 
         if greedy:
-            action = 2 if p.item() > 0.5 else 3
+            move_up = probability_up.item() > 0.5
         else:
-            action = 2 if torch.distributions.Bernoulli(probs=p).sample().item() == 1 else 3
+            move_up = Bernoulli(probs=probability_up).sample().item() == 1
+
+        action = ACTION_UP if move_up else ACTION_DOWN
 
         if collect_frames and step % frame_stride == 0:
             frames.append(env.render())
-            probs.append(p.item())
+            probabilities.append(probability_up.item())
 
         observation, reward, terminated, truncated, _ = env.step(action)
 
@@ -80,4 +83,4 @@ def rollout(
 
     if verbose:
         print(f"final: {score_us} - {score_them}")
-    return score_us, score_them, frames, probs
+    return score_us, score_them, frames, probabilities

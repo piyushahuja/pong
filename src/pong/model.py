@@ -21,12 +21,10 @@ D = 80 * 80
 # ------------------------------------------------------------
 # Policy network
 #
-# Reference NumPy version:
+#     6400 -> 200 (ReLU) -> 1 (sigmoid) -> P(move up)
 #
-# h = np.dot(W1, x)
-# h[h < 0] = 0
-# logp = np.dot(W2, h)
-# p = sigmoid(logp)
+# Two matrix multiplications and two nonlinearities. That is the
+# entire agent.
 # ------------------------------------------------------------
 
 class Policy(nn.Module):
@@ -47,10 +45,8 @@ class Policy(nn.Module):
             bias=False,
         )
 
-        # Match the reference initialization:
-        #
-        # W1 = randn(H, D) / sqrt(D)
-        # W2 = randn(H)    / sqrt(H)
+        # Scale the initial weights by 1/sqrt(inputs) so a layer's output
+        # starts at roughly the same scale regardless of how wide it is.
 
         nn.init.normal_(
             self.fc1.weight,
