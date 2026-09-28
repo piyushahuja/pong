@@ -20,7 +20,7 @@ Two weight matrices, 1,280,200 parameters, no convolutions:
 [Training](#training) ·
 [Experiments](#experiments) ·
 [Watching a trained agent](#watching-a-trained-agent) ·
-[Contributing](#contributing) ·
+[For mentees](#for-mentees) ·
 [Known gaps](#known-gaps) ·
 [Implementation notes](#implementation-notes)
 
@@ -363,28 +363,168 @@ output needs no ffmpeg and survives a kernel restart and `nbconvert`. GitHub
 strips the script, so it will not render in the repo's notebook preview — run
 the cell to see it.
 
-## Contributing
+## For mentees
 
-Full workflow in [CONTRIBUTING.md](CONTRIBUTING.md) — branching, how many seeds
-a claim needs, and what gets a pull request sent back. The short version:
+Start here if you have been handed this repo to work on. The detail is in
+[CONTRIBUTING.md](CONTRIBUTING.md); this is the path through it.
 
-1. Clone the repo. Never run `uv init` inside it.
+### Day one
+
+You do not have write access to this repo, so work from a fork.
+
+```bash
+gh repo fork piyushahuja/pong-pytorch --clone
+cd pong-pytorch
+
+git remote -v                    # origin should be your fork
+# gh usually adds the parent as `upstream`. If `git remote -v` does not show it:
+git remote add upstream https://github.com/piyushahuja/pong-pytorch.git
+
+uv sync --locked                 # installs Python 3.12, the pinned deps, and the pong package
+uv run pytest                    # ~1s. If this passes, your environment is correct.
+```
+
+Then see the thing work before you change anything:
+
+```bash
+uv run scripts/play.py --mode human
+```
+
+That loads the trained policy committed in `checkpoints/` and plays a full game in a
+window. It should win. You have not trained anything — that is the point of shipping one
+checkpoint: you get to see the finished behaviour on day one, before you understand it.
+
+If `--mode human` cannot open a window, use `--mode rgb`, or open
+`notebooks/04_watch_agent.ipynb` and call `replay.watch()` for an inline animation.
+
+### Then read, in this order
+
+| Order | File | Why |
+|---|---|---|
+| 1 | `notebooks/01_setup.ipynb` | what the agent is and is not told |
+| 2 | `notebooks/02_neural_network.ipynb` | the network, and why it is only two layers |
+| 3 | `notebooks/03_train_step.ipynb` | how one update works |
+| 4 | `notebooks/04_watch_agent.ipynb` | what a checkpoint holds, and playing it back |
+| 5 | `scripts/train.py` | the real loop. It reads top to bottom, in the same order as the notebooks. |
+
+### The loop you will repeat
+
+```
+   upstream/main ── the known-working baseline
+        │
+        │   git fetch upstream && git rebase upstream/main
+        ▼
+   your fork
+        │
+        ├── git switch -c experiment/reward-normalisation
+        │        │
+        │        ├── change a config, or change src/pong/
+        │        ├── uv run scripts/train.py --config ...   (several seeds)
+        │        ├── uv run pytest
+        │        │
+        │        └── gh pr create
+        │
+        └── review: the diff, and whether the numbers support the claim
+```
+
+One branch per question. Two questions is two branches — otherwise the diff cannot tell
+you which change moved the numbers.
+
+### The steps, concretely
+
+**1. Branch off an up-to-date main.**
+
+```bash
+git fetch upstream
+git switch main && git rebase upstream/main
+git switch -c experiment/reward-normalisation
+```
+
+**2. Make the change a config if it can be one.**
+
+```bash
+cp configs/baseline.toml configs/my-experiment.toml    # then edit the one line
+# (configs/gamma-090.toml and gamma-095.toml already exist as examples)
+```
+
+Editing `src/pong/` is for a change in *method* — a different loss, extra preprocessing,
+another layer. If you are editing a script to change a number, that number should have
+been a setting. Every setting is already a flag: `uv run scripts/train.py --help`.
+
+**3. Run it, on more than one seed.**
+
+```bash
+for seed in 0 1 2 3 4; do
+  uv run scripts/train.py --config gamma-090 --seed $seed --episodes 2000
+done
+```
+
+Reward variance between seeds is large enough that one run of a worse configuration
+routinely beats one run of a better one. One seed is not a result.
+
+**Budget the time before you start.** An episode takes a couple of seconds of CPU, so
+2,000 episodes is roughly an hour and five seeds of that is most of a day. The tracked
+policy took about 99,000 episodes. Decide how many episodes actually settle your question,
+start one seed to measure the rate on your machine, and run the rest in parallel or
+overnight. `--episodes` stops cleanly, and Ctrl+C still saves the run.
+
+**4. Check nothing else broke.**
+
+```bash
+uv run pytest
+```
+
+**5. Open the pull request.**
+
+```bash
+git push -u origin experiment/reward-normalisation
+gh pr create --fill
+```
+
+The template asks for your run directories. Quote them — each already records its commit,
+seed, settings and whether the tree was dirty, so a reviewer can see what produced a
+number without asking you.
+
+### Good first tasks
+
+In rough order of difficulty, none of which require understanding the whole thing:
+
+1. Run `uv run scripts/train.py --episodes 200` and read `metrics.csv` from the run
+   directory it prints. Plot reward against episode.
+2. Play the tracked policy with `--sample` instead of the default argmax, over the same
+   seed, and describe the difference in how it moves — not just the score. (Only one
+   checkpoint is tracked; the weaker ones live on the machine that trained them, so ask
+   for one if you want a before/after.)
+3. Compare `--gamma 0.90` against baseline over five seeds. Report which won, and say
+   whether the gap is bigger than the seed-to-seed spread.
+4. Write the missing comparison script — read several run directories and report which
+   configuration won. It is in [Known gaps](#known-gaps) because it does not exist yet.
+
+### The rules
+
+1. Never run `uv init` in the clone. It would overwrite `pyproject.toml`.
 2. `uv sync --locked` to set up, `uv run ...` to run anything.
 3. Do not `pip install` into the environment. `uv add X` instead, and commit
-   `pyproject.toml` and `uv.lock` together.
-4. Experiment differences go in configs or arguments — `--config gamma-090`,
-   never `pong_gamma95.py`.
+   `pyproject.toml` and `uv.lock` **together** — one without the other breaks everyone
+   else's `uv sync --locked`, which is what CI catches.
+4. Experiment differences go in configs or arguments — `--config gamma-090`, never
+   `pong_gamma95.py`.
 5. Never hardcode a path. Use `pong.PROJECT_ROOT`.
-6. Commit source, configs and small assets. Not `.venv/`, not `outputs/`, not
-   routine checkpoints.
-7. Report results from a run directory, not terminal scrollback. Every run
-   records its seed, commit, dirty flag and settings already.
-8. On Colab, run the bootstrap cell first.
-9. `uv run pytest` before pushing. About a second, and CI runs the same thing.
+6. Commit source, configs and small assets. Not `.venv/`, not `outputs/`, not routine
+   checkpoints.
+7. Report results from a run directory, not terminal scrollback. Every run already
+   records its seed, commit, dirty flag and settings.
+8. `uv run pytest` before pushing. About a second, and CI runs the same thing.
 
-The split, stated once:
+A pull request comes back if it contains a copied script with numbers changed, a result
+from one seed, a notebook with its own copy of `Policy`, a hardcoded path, a
+`pyproject.toml` without its `uv.lock`, or a number with no run directory behind it.
 
-| Owned by the repo | Owned by the machine |
+### Who owns what
+
+When something breaks, this usually says where to look.
+
+| Owned by the repo | Owned by your machine |
 |---|---|
 | Python version (`.python-version`) | OS |
 | dependencies (`pyproject.toml`, `uv.lock`) | NVIDIA driver |

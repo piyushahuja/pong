@@ -46,8 +46,11 @@ because otherwise the diff cannot tell you which change moved the numbers.
 A different hyperparameter is a config, not an edit:
 
 ```bash
-cp configs/baseline.toml configs/gamma-090.toml   # edit the one line
-uv run scripts/train.py --config gamma-090 --seed 0
+cp configs/baseline.toml configs/my-experiment.toml   # then edit the one line
+uv run scripts/train.py --config my-experiment --seed 0
+
+# gamma-090.toml and gamma-095.toml already exist; use them as examples rather
+# than overwriting them.
 ```
 
 Editing `src/pong/` is for a change in *method* — a different loss, a different
