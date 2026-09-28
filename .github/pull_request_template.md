@@ -4,7 +4,7 @@
 
 ## Is it a config or a method change?
 
-- [ ] A config only (`configs/*.toml`) — no change to `src/`
+- [ ] A config only (`configs/*.toml`), no change to `src/`
 - [ ] A change in method (`src/pong/...`)
 - [ ] Both
 

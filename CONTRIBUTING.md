@@ -53,7 +53,7 @@ uv run scripts/train.py --config my-experiment --seed 0
 # than overwriting them.
 ```
 
-Editing `src/pong/` is for a change in *method* — a different loss, a different
+Editing `src/pong/` is for a change in *method*, a different loss, a different
 preprocessing step, an extra network layer. If you find yourself editing
 `scripts/train.py` to change a number, that number should have been a setting.
 
@@ -85,7 +85,7 @@ git push -u origin experiment/reward-normalisation
 gh pr create
 ```
 
-The template asks for the run directories. Quote them — each one already
+The template asks for the run directories. Quote them, each one already
 records its commit, seed, settings and whether the tree was dirty, so a
 reviewer can tell what produced the number without asking you.
 
@@ -94,8 +94,8 @@ reviewer can tell what produced the number without asking you.
 | Commit | Do not commit |
 |---|---|
 | `src/`, `scripts/`, `tests/` | `.venv/` |
-| `configs/*.toml` | `outputs/` — runs are reproducible from config + commit |
-| `pyproject.toml` **and** `uv.lock` together | checkpoints, except a deliberate archive |
+| `configs/*.toml` | `outputs/`, runs are reproducible from config + commit |
+| `pyproject.toml` and `uv.lock` together | checkpoints, except a deliberate archive |
 | notebooks | datasets, videos |
 
 `outputs/` and `*.pt` are gitignored, so this mostly takes care of itself. The
@@ -109,7 +109,7 @@ catches.
 Quote the run directory, not the terminal:
 
 > `outputs/2026-09-28T11-02-14Z-gamma-090/` and four more seeds. Mean running
-> reward after 20k episodes: **+2.1**, against **+0.4** for baseline over the
+> reward after 20k episodes: +2.1, against +0.4 for baseline over the
 > same seeds. `git_dirty` false on all five.
 
 If `git_dirty` is `true` in a run you want to report, the run is not
@@ -120,7 +120,7 @@ reproducible from its commit. Commit the change and run it again.
 - A new script that is a copy of an old script with numbers changed.
 - A result from one seed.
 - A notebook containing its own copy of `Policy` rather than importing it.
-- A hardcoded path — `/Users/you/...`, or a relative path assuming a working
+- A hardcoded path, `/Users/you/...`, or a relative path assuming a working
   directory. Use `pong.PROJECT_ROOT`.
 - `pyproject.toml` changed without `uv.lock`.
 - A reported number with no run directory behind it.
