@@ -51,26 +51,53 @@ bootstrap cell as its second cell: open the notebook from GitHub, run that cell
 first, and it clones the repo and installs what Colab is missing. It is a no-op
 when you run the same notebook locally.
 
-The whole cell is five lines, and there is no `pip` in it:
+Open each worksheet straight from GitHub, and run its bootstrap cell first:
+
+1. [Worksheet 1: setup](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/01_setup.ipynb)
+2. [Worksheet 2: building the network](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/02_neural_network.ipynb)
+3. [Worksheet 3: one training step](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/03_train_step.ipynb)
+4. [Worksheet 4: watching a trained agent](https://colab.research.google.com/github/piyushahuja/pong-pytorch/blob/main/notebooks/04_watch_agent_worksheet.ipynb)
+
+Every worksheet stands on its own and ends with a link to the next, so the loop is: finish
+a worksheet, click Next, run all. Nothing depends on the Python state of the previous
+notebook, which matters because Colab may hand you a fresh runtime at any point. Do not go
+hunting for the cloned `.ipynb` files in Colab's file sidebar; those are just files inside
+the VM, and the GitHub-backed link is the version that is current.
+
+The bootstrap is idempotent, so re-running it is cheap:
 
 ```python
-![ -d /content/pong-pytorch ] || git clone -q <this repo> /content/pong-pytorch
-%cd /content/pong-pytorch
-!curl -LsSf https://astral.sh/uv/install.sh | sh
-!~/.local/bin/uv pip install -q --system --python {sys.executable} gymnasium ale-py
-!~/.local/bin/uv pip install -q --system --python {sys.executable} -e . --no-deps
+![ -d {REPO} ] || git clone -q {URL} {REPO}
+!git -C {REPO} pull -q || true
+%cd {REPO}
+!command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+!uv pip install -q --system --python {sys.executable} gymnasium ale-py
+sys.path.insert(0, f"{REPO}/src")
 ```
 
-It installs `gymnasium`, `ale-py`, and the `pong` package with `--no-deps`.
-Nothing else: Colab already provides a working CUDA build of torch, and replacing
-it would mean downloading the entire CUDA stack for no benefit to anything taught
-here.
+It installs `gymnasium` and `ale-py`, and nothing else: Colab already provides a working
+CUDA build of torch, and replacing it would mean downloading the whole CUDA stack for no
+benefit to anything taught here. On a runtime that has already run a worksheet, the clone
+becomes a `pull` and the uv install is skipped, so it takes a second or two.
 
-Two details in those lines. `--python {sys.executable}` targets the kernel that
-is actually running the cell, which is stricter than `--system` alone, normally
-the same interpreter in Colab, but only one of the two is guaranteed to be. And
-the `[ -d ... ] ||` test makes re-running the cell harmless instead of printing a
-clone failure.
+Three of those lines were bugs before they were decisions.
+
+`--python {sys.executable}` targets the kernel actually running the cell, which is stricter
+than `--system` alone. They are normally the same interpreter in Colab, but only one of the
+two is guaranteed to be.
+
+`UV_INSTALL_DIR=/usr/local/bin` puts uv somewhere already on `PATH`. The installer otherwise
+picks `$XDG_BIN_HOME` or `$HOME/.local/bin`, and guessing wrong meant a silent failure.
+
+The last line is the important one. The obvious move is `uv pip install -e . --no-deps`, and
+it does not work here: an editable install drops a `.pth` file into site-packages, and `.pth`
+files are only read when the interpreter starts. A kernel that is already running never sees
+it, so `import pong` fails with `No module named 'pong'` while the install reports success.
+Putting `src` on `sys.path` takes effect immediately.
+
+Running `uv sync --locked` on Colab does not help either: it builds a `.venv` inside the
+clone that Colab's kernel does not use, after a long torch download. Locally it is the right
+command, because it installs the package before the kernel starts.
 
 `--mode human` will not work in Colab, a live pygame window needs an OS window
 a notebook cannot host. Use the inline animation instead:
