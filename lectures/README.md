@@ -6,10 +6,12 @@ notes on ideas the worksheets only touch.
 Worksheets teach the mechanism you need to run the code. This is for the surrounding argument:
 where a technique came from, why it works, what it connects to.
 
-## Lecture 2: learning without a teacher
+## Reinforcement learning
 
-`02-learning-without-a-teacher/` holds the RL lecture. Numbered 02 because lecture 1, on the
-history of neural networks, is still in the vault.
+`rl-one/` holds the lecture this repo grew out of, on learning without a teacher. Each lecture
+is a folder named for its subject, so more slot in without disturbing the others: further RL
+lectures as `rl-two`, `rl-three`, and the history-of-neural-networks lecture still in the vault
+under its own name.
 
 | File | What it is |
 |---|---|
@@ -44,6 +46,6 @@ original in their place.
 
 | File | About |
 |---|---|
-| `information.md` | Representation design: transforming raw observations so the task-relevant structure is easier to see. Frame differencing, frame stacking, invariance, sufficient statistics, and why Pong's preprocessing is an instance of something general. |
+| `notes/representation-design.md` | Representation design: transforming raw observations so the task-relevant structure is easier to see. Frame differencing, frame stacking, invariance, sufficient statistics, and why Pong's preprocessing is an instance of something general. |
 
 Interactive demos live in `demos/` at the repo root, because the worksheets use them too.
