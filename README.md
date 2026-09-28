@@ -181,13 +181,15 @@ pong-pytorch/
 │   ├── play.py             watch a trained policy
 │   └── explore_env.py      scratch: drives the env with random actions
 │
-├── notebooks/
+├── notebooks/              taught worksheets: objectives, exercises, answers
 │   ├── 01_setup.ipynb              uv, ALE, Gymnasium; reset() and step()
 │   ├── 02_neural_network.ipynb     torch.nn, tensor shapes, batch dims
 │   ├── 03_train_step.ipynb         probability → sample → log-prob → step
-│   ├── 04_watch_agent.ipynb        checkpoints, loading, replaying
-│   ├── 0N_*_worksheet.ipynb        the same four, as taught worksheets
+│   ├── 04_watch_agent_worksheet.ipynb   checkpoints, loading, replaying
+│   ├── 04_watch_agent.ipynb        the same material without the scaffolding
 │   └── pong_exploration.ipynb      the original working notebook
+│
+├── lectures/               longer-form notes and visualisations
 │
 ├── configs/                one TOML file per experiment
 │   ├── baseline.toml       what the tracked policy was trained with
@@ -205,25 +207,26 @@ arguments and call it. Nothing is ever defined twice.
 
 Notebooks 1–3 read without executing anything; the figures are explanatory.
 
-## Two flavours of each notebook
+## The worksheets
 
-Each of the four numbered notebooks has a `_worksheet` twin:
+`notebooks/` holds four taught worksheets rather than reference notebooks. Each one has:
 
-| | Reference notebook | Worksheet |
-|---|---|---|
-| `01_setup` | the APIs, briefly | numbered sections, an environment you drive yourself, 4 exercises |
-| `02_neural_network` | the APIs, briefly | + parameter counts worked through, 6 exercises |
-| `03_train_step` | the APIs, briefly | + every number checked against the formula, 7 exercises |
-| `04_watch_agent` | the APIs, briefly | + the exploration tax measured, 6 exercises |
+- **What you will learn** up front, so you know what you are trading your time for.
+- Numbered sections, and a markdown cell after each output saying what to notice in it.
+- **Exercises** — some written, some code — each with a collapsed answer beneath it. The
+  answers use `<details>`, so they render folded on GitHub, in JupyterLab and in Colab: you
+  have to click. Try the exercise first; the answers are written to be worth reading even
+  when you got it right, because several of them explain why the obvious expectation is
+  wrong.
+- **Questions to think about**, which have no short answers.
+- **What you have learnt**, as a table you can check yourself against.
 
-The worksheets carry the same code — copied cell for cell, not retyped — plus **what you
-will learn** at the top, a markdown cell after each output explaining what to notice, and
-**exercises**, **questions to think about** and **what you have learnt** at the end. Their
-outputs are saved, so they can be read before they are run.
+Outputs are saved, so a worksheet can be read before it is run. Every numeric claim in the
+explanatory cells was checked against the output the cell actually produces.
 
-Use the reference notebook when you want to look something up, and the worksheet when you
-are learning it or handing it to someone else. Because the code cells are copies, a change
-to one needs making in both; CI validates both, but it cannot tell you they have drifted.
+`04_watch_agent.ipynb` is kept alongside its worksheet as a plain reference version.
+`pong_exploration.ipynb` is the original working notebook, kept as a historical document —
+see [Known gaps](#known-gaps).
 
 ## Checkpoints
 
@@ -458,14 +461,15 @@ If `--mode human` cannot open a window, use `--mode rgb`, or open
 
 | Order | File | Why |
 |---|---|---|
-| 1 | `notebooks/01_setup_worksheet.ipynb` | what the agent is and is not told |
-| 2 | `notebooks/02_neural_network_worksheet.ipynb` | the network, and why it is only two layers |
-| 3 | `notebooks/03_train_step_worksheet.ipynb` | how one update works |
+| 1 | `notebooks/01_setup.ipynb` | what the agent is and is not told |
+| 2 | `notebooks/02_neural_network.ipynb` | the network, and why it is only two layers |
+| 3 | `notebooks/03_train_step.ipynb` | how one update works |
 | 4 | `notebooks/04_watch_agent_worksheet.ipynb` | what a checkpoint holds, and playing it back |
 | 5 | `scripts/train.py` | the real loop. It reads top to bottom, in the same order as the worksheets. |
 
-Do the exercises. The worksheets are the taught version; the unsuffixed notebooks are the
-same material without the scaffolding, for looking things up later.
+Do the exercises, and resist the collapsed answers until you have tried. They are written to
+explain *why*, not just to confirm — a few of them show that the obvious expectation is
+measurably wrong.
 
 ### The loop you will repeat
 
@@ -607,9 +611,14 @@ Worth knowing before handing this to someone:
 - **`scripts/train.py` runs at module level**, so it cannot be imported and the
   loop itself is not unit-tested. Deliberate: it reads top to bottom in the
   order the notebooks teach. The pieces it calls are all tested.
-- **Committed notebook outputs.** `02_neural_network.ipynb` and
-  `pong_exploration.ipynb` carry saved outputs, which makes their diffs noisy.
-  Either strip them before committing or decide they are documentation.
+- **Committed notebook outputs are a deliberate trade.** The worksheets save their
+  outputs so they can be read before being run, which is worth it for teaching
+  material and does make their diffs noisy. Re-running a worksheet will show
+  changes even where nothing meaningful moved, so read notebook diffs with that
+  in mind.
+- **`04_watch_agent` exists twice**, as a worksheet and as a plain reference
+  notebook. The code cells are copies rather than shared, so a change to one
+  needs making in both. CI validates both but cannot tell you they have drifted.
 
 ## Implementation notes
 
