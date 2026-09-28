@@ -293,19 +293,22 @@ play. Notebook 4 unpacks it.
 
 ### Which checkpoint gets loaded
 
-Nothing hardcodes a path. `agent.default_checkpoint()`, also reachable as
-`play.default_checkpoint()`, which is how the notebooks call it, resolves in
-order:
+Nothing hardcodes a path. `pong.default_checkpoint()` takes the most recent
+checkpoint, wherever it lives: `outputs/<run>/policy.pt` from any run,
+`checkpoints/*.pt` from the archive, or `pong_policy.pt` in the project root
+where runs wrote before they had run directories. `--checkpoint` and
+`--resume-from` override it.
 
-1. `--checkpoint`, if you passed one
-2. `pong_policy.pt` in the project root, where runs used to write, and where a
-   long-lived training run may still be writing
-3. the newest `outputs/<run>/policy.pt`, your most recent experiment
-4. the newest `.pt` in `checkpoints/`, what a fresh clone has
+Newest by modification time rather than a fixed order, because a fixed order got
+it wrong. It used to prefer the project root on the grounds that a long-lived run
+was writing there, which stopped being true once runs got their own directories:
+after one resumed run the root file was a thousand episodes stale, and asking to
+resume the newest checkpoint resumed the older one.
 
-So the same code does the right thing whether you are mid-training locally or
-on a bare clone in Colab. Paths resolve against the project root rather than
-the working directory, so running from a subdirectory finds the same files.
+So the same code does the right thing whether you are mid-experiment locally or
+on a bare clone in Colab, where only the archive exists. Paths resolve against
+the project root rather than the working directory, so running from a
+subdirectory finds the same files.
 
 ## Training
 

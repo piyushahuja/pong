@@ -35,7 +35,7 @@ def test_notebook_is_small_enough_for_git(path):
     assert size <= MAX_NOTEBOOK_BYTES, (
         f"{path.name} is {size / 1024:.0f} KB, over the {MAX_NOTEBOOK_BYTES / 1024:.0f} KB "
         f"budget. Usually this means a cell saved an animation or a very large figure. "
-        f"Clear that cell's output and commit again."
+        f"Run `uv run scripts/strip_heavy_outputs.py` and commit again."
     )
 
 
@@ -51,5 +51,6 @@ def test_no_single_output_is_huge(path):
                     f"{path.name} cell {index} has a {len(text) / 1024:.0f} KB {mime} "
                     f"output, over the {MAX_SINGLE_OUTPUT_BYTES / 1024:.0f} KB budget. "
                     f"If this is replay.watch(), clear the cell: the animation does not "
-                    f"render on GitHub anyway, so saving it costs megabytes for nothing."
+                    f"render on GitHub anyway, so saving it costs megabytes for nothing. Fix: "
+                    f"`uv run scripts/strip_heavy_outputs.py`."
                 )

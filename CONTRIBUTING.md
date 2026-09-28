@@ -114,8 +114,14 @@ single cell once made a notebook 7.5 MB, and because each re-run writes a fresh 
 copies ended up in history at roughly 37 MB. It also does not render on GitHub, so saving it
 buys nothing.
 
-Clear that cell before committing. `uv run pytest` enforces a size budget per notebook and
-per output, so you will find out before CI does.
+Clear that cell before committing:
+
+```bash
+uv run scripts/strip_heavy_outputs.py
+```
+
+That clears any output over the budget and leaves the rest alone. `uv run pytest` enforces the
+budget, so you find out before CI does. It has already caught one re-run of that cell.
 
 ## Reporting a result
 

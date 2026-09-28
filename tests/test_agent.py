@@ -127,7 +127,7 @@ def test_checkpoint_round_trip(tmp_path, monkeypatch):
         assert torch.equal(a, b), f"{name} changed across save/load"
 
 
-def test_default_checkpoint_resolution_order(tmp_path, monkeypatch):
+def test_default_checkpoint_picks_the_newest(tmp_path, monkeypatch):
     """Paths come from the project root, so point the constants at a fake one."""
     monkeypatch.setattr(agent_checkpoints, "CHECKPOINT", tmp_path / "pong_policy.pt")
     monkeypatch.setattr(agent_checkpoints, "CHECKPOINT_DIR", tmp_path / "checkpoints")
@@ -136,37 +136,32 @@ def test_default_checkpoint_resolution_order(tmp_path, monkeypatch):
     with pytest.raises(FileNotFoundError):
         agent.default_checkpoint()
 
-    # 3rd choice: the archived policy a fresh clone has.
+    # Only the archive exists, which is a fresh clone.
     archive = tmp_path / "checkpoints"
     archive.mkdir()
-    (archive / "pong-ep100-reward-20.00.pt").touch()
-    assert agent.default_checkpoint().name == "pong-ep100-reward-20.00.pt"
+    archived = archive / "pong-ep100-reward-20.00.pt"
+    archived.touch()
+    os.utime(archived, (1_000_000, 1_000_000))
+    assert agent.default_checkpoint() == archived
 
-    # 2nd choice: a run directory beats the archive.
+    # A run directory that is newer wins.
     run = tmp_path / "outputs" / "2026-01-01T00-00-00Z-baseline"
     run.mkdir(parents=True)
-    (run / "policy.pt").touch()
-    resolved = agent.default_checkpoint()
-    assert resolved.parent.name.endswith("baseline"), resolved
+    policy = run / "policy.pt"
+    policy.touch()
+    os.utime(policy, (2_000_000, 2_000_000))
+    assert agent.default_checkpoint() == policy
 
-    # 1st choice: a live run in the project root beats everything.
-    (tmp_path / "pong_policy.pt").touch()
-    assert agent.default_checkpoint().name == "pong_policy.pt"
+    # A root checkpoint older than the run does NOT win, which is the bug this
+    # replaced: a fixed order preferred the root and resumed stale weights.
+    legacy = tmp_path / "pong_policy.pt"
+    legacy.touch()
+    os.utime(legacy, (1_500_000, 1_500_000))
+    assert agent.default_checkpoint() == policy
 
-
-def test_default_checkpoint_picks_newest_run(tmp_path, monkeypatch):
-    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT", tmp_path / "absent.pt")
-    monkeypatch.setattr(agent_checkpoints, "CHECKPOINT_DIR", tmp_path / "absent")
-    monkeypatch.setattr(agent_checkpoints, "OUTPUT_DIR", tmp_path / "outputs")
-
-    for name, mtime in [("older", 1_000_000), ("newer", 2_000_000)]:
-        run = tmp_path / "outputs" / name
-        run.mkdir(parents=True)
-        policy = run / "policy.pt"
-        policy.touch()
-        os.utime(policy, (mtime, mtime))
-
-    assert agent.default_checkpoint().parent.name == "newer"
+    # ...but it does when it really is the newest.
+    os.utime(legacy, (3_000_000, 3_000_000))
+    assert agent.default_checkpoint() == legacy
 
 
 def test_paths_are_root_relative_not_cwd_relative(tmp_path, monkeypatch):

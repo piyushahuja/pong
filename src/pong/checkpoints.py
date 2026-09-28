@@ -26,34 +26,36 @@ CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
 
 def default_checkpoint():
     """
-    Where to find weights when none were named.
+    Where to find weights when none were named: the most recent, wherever it is.
 
-    In order:
+    Three places hold checkpoints, and the newest by modification time wins:
 
-    1. pong_policy.pt in the project root -- where runs used to write, and
-       where a long-lived training run may still be writing.
-    2. the newest outputs/<run>/policy.pt -- the most recent experiment.
-    3. the newest checkpoints/*.pt -- the archived policies, which is all a
-       fresh clone has.
+    1. outputs/<run>/policy.pt, written by every run
+    2. checkpoints/*.pt, the archived policies, which is all a fresh clone has
+    3. pong_policy.pt in the project root, where runs wrote before they had run
+       directories
 
-    All of these are gitignored except the one tracked archive: checkpoints
-    stay on the machine that trained them.
+    Newest rather than a fixed order, because a fixed order gets this wrong. It
+    used to prefer the project root, on the grounds that a long-lived run was
+    writing there. Nothing writes there now, so after one resumed run the root
+    file was a thousand episodes stale and "resume the newest checkpoint"
+    resumed the older one.
+
+    Pass --checkpoint or --resume-from to override this entirely.
     """
-    if CHECKPOINT.exists():
-        return CHECKPOINT
+    candidates = [
+        *OUTPUT_DIR.glob("*/policy.pt"),
+        *CHECKPOINT_DIR.glob("*.pt"),
+        *([CHECKPOINT] if CHECKPOINT.exists() else []),
+    ]
 
-    runs = sorted(OUTPUT_DIR.glob("*/policy.pt"), key=lambda f: f.stat().st_mtime)
-    if runs:
-        return runs[-1]
+    if not candidates:
+        raise FileNotFoundError(
+            "No checkpoint found. Train one with `uv run scripts/train.py`, or pass "
+            "--checkpoint pointing at a .pt file."
+        )
 
-    archived = sorted(CHECKPOINT_DIR.glob("*.pt"), key=lambda f: f.stat().st_mtime)
-    if archived:
-        return archived[-1]
-
-    raise FileNotFoundError(
-        "No checkpoint found. Train one with `uv run scripts/train.py`, or pass "
-        "--checkpoint pointing at a .pt file."
-    )
+    return max(candidates, key=lambda f: f.stat().st_mtime)
 
 
 def load_policy(checkpoint=None, device=None):
