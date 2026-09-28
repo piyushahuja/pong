@@ -96,13 +96,26 @@ reviewer can tell what produced the number without asking you.
 | `src/`, `scripts/`, `tests/` | `.venv/` |
 | `configs/*.toml` | `outputs/`, runs are reproducible from config + commit |
 | `pyproject.toml` and `uv.lock` together | checkpoints, except a deliberate archive |
-| notebooks | datasets, videos |
+| notebooks, with their outputs | datasets, videos, saved animations |
 
 `outputs/` and `*.pt` are gitignored, so this mostly takes care of itself. The
 one thing that does not: if you add a dependency with `uv add`, commit both
 `pyproject.toml` and `uv.lock` in the same commit. Committing one without the
 other breaks `uv sync --locked` for everyone else, which is exactly what CI
 catches.
+
+## Notebook outputs
+
+The worksheets save their outputs on purpose, so they can be read before being run. Text
+and small figures are worth the diff noise.
+
+One output is not: `replay.watch()` embeds every frame of an episode as base64 PNG. That
+single cell once made a notebook 7.5 MB, and because each re-run writes a fresh blob, five
+copies ended up in history at roughly 37 MB. It also does not render on GitHub, so saving it
+buys nothing.
+
+Clear that cell before committing. `uv run pytest` enforces a size budget per notebook and
+per output, so you will find out before CI does.
 
 ## Reporting a result
 

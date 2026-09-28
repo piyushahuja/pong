@@ -1,0 +1,494 @@
+<title>Neurons as Matrix Rows</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --wm-ground: #f4f7f6;
+    --wm-card:   #ffffff;
+    --wm-ink:    #1a2b2e;
+    --wm-muted:  #5d7176;
+    --wm-line:   #c8d6d8;
+    --wm-teal:   #2e7d8f;
+    --wm-teal-soft: #d4e6ea;
+    --wm-hot:    #c25b56;
+    --wm-hot-soft:  #f2dcda;
+    --wm-dormant: #b6c7ca;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --wm-ground: #141c1e;
+      --wm-card:   #1c2628;
+      --wm-ink:    #e4ecec;
+      --wm-muted:  #9ab0b4;
+      --wm-line:   #2f3f42;
+      --wm-teal:   #5fb3c4;
+      --wm-teal-soft: #23424a;
+      --wm-hot:    #e08a85;
+      --wm-hot-soft:  #4a2b29;
+      --wm-dormant: #3a4c50;
+    }
+  }
+  :root[data-theme="dark"] {
+    --wm-ground: #141c1e;
+    --wm-card:   #1c2628;
+    --wm-ink:    #e4ecec;
+    --wm-muted:  #9ab0b4;
+    --wm-line:   #2f3f42;
+    --wm-teal:   #5fb3c4;
+    --wm-teal-soft: #23424a;
+    --wm-hot:    #e08a85;
+    --wm-hot-soft:  #4a2b29;
+    --wm-dormant: #3a4c50;
+  }
+
+  body {
+    background: var(--wm-ground);
+    color: var(--wm-ink);
+    margin: 0;
+  }
+
+  #wm {
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    color: var(--wm-ink);
+    background: var(--wm-ground);
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 22px 34px;
+    line-height: 1.55;
+  }
+
+  #wm h1 {
+    font-size: 1.32rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  #wm .lede {
+    color: var(--wm-muted);
+    font-size: 0.93rem;
+    margin: 0 0 22px;
+    max-width: 62ch;
+  }
+  #wm .lede code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.88em;
+    color: var(--wm-ink);
+  }
+
+  #wm .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 22px;
+    padding: 13px 16px;
+    background: var(--wm-card);
+    border: 1px solid var(--wm-line);
+    border-radius: 9px;
+    margin-bottom: 20px;
+  }
+  #wm .ctl { display: flex; align-items: center; gap: 10px; }
+  #wm .ctl label {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.78rem;
+    color: var(--wm-muted);
+    letter-spacing: 0.02em;
+  }
+  #wm input[type="range"] { width: 108px; accent-color: var(--wm-teal); }
+  #wm input[type="range"]:focus-visible { outline: 2px solid var(--wm-hot); outline-offset: 3px; }
+  #wm .val {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    min-width: 2.1ch;
+  }
+  #wm .tally {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--wm-muted);
+  }
+  #wm .tally b { color: var(--wm-teal); font-weight: 500; }
+
+  #wm .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 720px) { #wm .panels { grid-template-columns: 1fr; } }
+
+  #wm .panel {
+    background: var(--wm-card);
+    border: 1px solid var(--wm-line);
+    border-radius: 9px;
+    padding: 14px 15px 16px;
+    overflow-x: auto;
+  }
+  #wm .panel h2 {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--wm-muted);
+    margin: 0 0 3px;
+  }
+  #wm .panel .sub {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.78rem;
+    color: var(--wm-ink);
+    margin: 0 0 12px;
+  }
+
+  #wm svg { display: block; width: 100%; height: auto; overflow: visible; }
+  #wm .edge { stroke: var(--wm-dormant); stroke-width: 0.9; transition: stroke .1s, stroke-width .1s; }
+  #wm .edge.lit { stroke: var(--wm-hot); stroke-width: 2.1; }
+  #wm .in-node { fill: var(--wm-card); stroke: var(--wm-muted); stroke-width: 1.2; }
+  #wm .in-node.lit { fill: var(--wm-hot-soft); stroke: var(--wm-hot); }
+  #wm .neuron { fill: var(--wm-teal-soft); stroke: var(--wm-teal); stroke-width: 1.6; }
+  #wm .neuron.lit { fill: var(--wm-hot-soft); stroke: var(--wm-hot); stroke-width: 2.2; }
+  #wm .nlabel {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 8.5px; fill: var(--wm-muted);
+  }
+  #wm .axis {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 9px; fill: var(--wm-muted);
+  }
+  #wm .hit { fill: transparent; cursor: crosshair; }
+
+  #wm .grid-wrap { display: inline-block; }
+  #wm .colhdr, #wm .row {
+    display: grid;
+    gap: 2px;
+    align-items: center;
+  }
+  #wm .colhdr { margin-bottom: 4px; }
+  #wm .rows { display: flex; flex-direction: column; gap: 2px; }
+  #wm .cell {
+    aspect-ratio: 1;
+    min-width: 15px;
+    border-radius: 2px;
+    background: var(--wm-teal-soft);
+    border: 1px solid transparent;
+    cursor: crosshair;
+    transition: background .1s;
+  }
+  #wm .cell.rowlit { background: var(--wm-hot-soft); }
+  #wm .cell.collit { background: var(--wm-hot-soft); }
+  #wm .cell.lit { background: var(--wm-hot); border-color: var(--wm-hot); }
+  #wm .hdr {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.6rem;
+    color: var(--wm-muted);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  #wm .hdr.lit { color: var(--wm-hot); font-weight: 500; }
+  #wm .rowlbl {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.6rem;
+    color: var(--wm-muted);
+    text-align: right;
+    padding-right: 6px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  #wm .rowlbl.lit { color: var(--wm-hot); font-weight: 500; }
+
+  #wm .readout {
+    margin-top: 18px;
+    padding: 12px 15px;
+    border-left: 2px solid var(--wm-teal);
+    background: var(--wm-card);
+    border-radius: 0 7px 7px 0;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.83rem;
+    color: var(--wm-ink);
+    min-height: 1.6em;
+  }
+  #wm .readout.idle { color: var(--wm-muted); border-left-color: var(--wm-line); }
+  #wm .readout em { color: var(--wm-hot); font-style: normal; }
+
+  #wm .foot {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--wm-line);
+    font-size: 0.84rem;
+    color: var(--wm-muted);
+    max-width: 68ch;
+  }
+  #wm .foot code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.88em;
+    background: var(--wm-teal-soft);
+    color: var(--wm-ink);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  #wm .foot p { margin: 0 0 9px; }
+  #wm .foot p:last-child { margin-bottom: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #wm * { transition: none !important; }
+  }
+</style>
+
+<div id="wm">
+  <h1>Every neuron is one row of the weight matrix</h1>
+  <p class="lede">
+    A blue circle is a neuron. It has its own weight to <em>every</em> coordinate of the input,
+    so the layer holds <code>input_dim &times; hidden_dim</code> weights in total. Those weights are not
+    scattered &mdash; they stack into a single matrix, one row per neuron, one column per input coordinate.
+    Hover anything below; the other panel answers.
+  </p>
+
+  <div class="controls">
+    <div class="ctl">
+      <label for="wm-in">input_dim</label>
+      <input type="range" id="wm-in" min="3" max="12" value="6">
+      <span class="val" id="wm-in-v">6</span>
+    </div>
+    <div class="ctl">
+      <label for="wm-hid">hidden_dim</label>
+      <input type="range" id="wm-hid" min="2" max="8" value="4">
+      <span class="val" id="wm-hid-v">4</span>
+    </div>
+    <div class="tally" id="wm-tally"></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>The picture</h2>
+      <p class="sub" id="wm-cap-a">inputs &rarr; neurons</p>
+      <svg id="wm-svg" viewBox="0 0 340 260" role="img"
+           aria-label="Input coordinates on the left connected by one weight each to every neuron on the right"></svg>
+    </div>
+
+    <div class="panel">
+      <h2>The same thing</h2>
+      <p class="sub" id="wm-cap-b">W</p>
+      <div class="grid-wrap" id="wm-grid"></div>
+    </div>
+  </div>
+
+  <div class="readout idle" id="wm-readout">Hover a neuron, an input coordinate, or a single weight.</div>
+
+  <div class="foot">
+    <p>
+      <strong>Why rows and not columns.</strong> The layer computes <code>h = W x</code>. Matrix&ndash;vector
+      multiplication takes the dot product of each <em>row</em> of <code>W</code> with <code>x</code>,
+      and produces one number per row. One row in, one neuron's activation out &mdash; so row count must be
+      <code>hidden_dim</code> and column count must be <code>input_dim</code>.
+    </p>
+    <p>
+      <strong>The argument order is a trap.</strong> You write
+      <code>nn.Linear(input_dim, hidden_dim)</code>, but the tensor it stores is
+      <code>.weight</code> of shape <code>(hidden_dim, input_dim)</code> &mdash; transposed relative to how
+      you typed it. In <code>pong.py</code> that is <code>nn.Linear(6400, 200)</code> holding a
+      <code>(200, 6400)</code> matrix: 1,280,000 weights, every one of them a line in a picture
+      far too dense to draw.
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const svg      = document.getElementById("wm-svg");
+  const grid     = document.getElementById("wm-grid");
+  const readout  = document.getElementById("wm-readout");
+  const tally    = document.getElementById("wm-tally");
+  const capA     = document.getElementById("wm-cap-a");
+  const capB     = document.getElementById("wm-cap-b");
+  const inSlider = document.getElementById("wm-in");
+  const hidSlider= document.getElementById("wm-hid");
+  const inVal    = document.getElementById("wm-in-v");
+  const hidVal   = document.getElementById("wm-hid-v");
+
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 340, H = 260, XIN = 62, XHID = 262, TOP = 34, BOT = 232;
+
+  let nIn = +inSlider.value, nHid = +hidSlider.value;
+  let hover = null;   // {kind:'neuron'|'input'|'cell', i, j}
+
+  const spread = (n, top, bot) =>
+    n === 1 ? [(top + bot) / 2]
+            : Array.from({length: n}, (_, k) => top + k * (bot - top) / (n - 1));
+
+  function el(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function build() {
+    // ---- left panel: the picture ----
+    svg.innerHTML = "";
+    const ys  = spread(nIn,  TOP, BOT);
+    const yh  = spread(nHid, TOP + 18, BOT - 18);
+
+    svg.appendChild(Object.assign(el("text", {x: XIN, y: 16, "text-anchor": "middle", class: "axis"}),
+      {textContent: `x  (${nIn})`}));
+    svg.appendChild(Object.assign(el("text", {x: XHID, y: 16, "text-anchor": "middle", class: "axis"}),
+      {textContent: `h  (${nHid})`}));
+
+    for (let i = 0; i < nHid; i++) {
+      for (let j = 0; j < nIn; j++) {
+        const e = el("line", {x1: XIN + 9, y1: ys[j], x2: XHID - 12, y2: yh[i], class: "edge"});
+        e.dataset.i = i; e.dataset.j = j;
+        svg.appendChild(e);
+      }
+    }
+
+    for (let j = 0; j < nIn; j++) {
+      const r = el("rect", {x: XIN - 9, y: ys[j] - 7, width: 18, height: 14, rx: 2, class: "in-node"});
+      r.dataset.j = j;
+      svg.appendChild(r);
+      svg.appendChild(Object.assign(
+        el("text", {x: XIN - 16, y: ys[j] + 3.2, "text-anchor": "end", class: "nlabel"}),
+        {textContent: `x${sub(j)}`}));
+      const hit = el("rect", {x: XIN - 30, y: ys[j] - 10, width: 44, height: 20, class: "hit"});
+      hit.addEventListener("mouseenter", () => setHover({kind: "input", j}));
+      hit.addEventListener("mouseleave", clearHover);
+      svg.appendChild(hit);
+    }
+
+    for (let i = 0; i < nHid; i++) {
+      const circ = el("circle", {cx: XHID, cy: yh[i], r: 11, class: "neuron"});
+      circ.dataset.i = i;
+      svg.appendChild(circ);
+      svg.appendChild(Object.assign(
+        el("text", {x: XHID + 19, y: yh[i] + 3.2, class: "nlabel"}),
+        {textContent: `h${sub(i)}`}));
+      const hit = el("circle", {cx: XHID, cy: yh[i], r: 16, class: "hit"});
+      hit.addEventListener("mouseenter", () => setHover({kind: "neuron", i}));
+      hit.addEventListener("mouseleave", clearHover);
+      svg.appendChild(hit);
+    }
+
+    // ---- right panel: the matrix ----
+    grid.innerHTML = "";
+    const cols = `minmax(3.4ch, auto) repeat(${nIn}, minmax(15px, 26px))`;
+
+    const hdr = document.createElement("div");
+    hdr.className = "colhdr";
+    hdr.style.gridTemplateColumns = cols;
+    hdr.appendChild(document.createElement("div"));
+    for (let j = 0; j < nIn; j++) {
+      const h = document.createElement("div");
+      h.className = "hdr"; h.textContent = j; h.dataset.col = j;
+      hdr.appendChild(h);
+    }
+    grid.appendChild(hdr);
+
+    const rows = document.createElement("div");
+    rows.className = "rows";
+    for (let i = 0; i < nHid; i++) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.gridTemplateColumns = cols;
+      const lbl = document.createElement("div");
+      lbl.className = "rowlbl"; lbl.textContent = i; lbl.dataset.row = i;
+      row.appendChild(lbl);
+      for (let j = 0; j < nIn; j++) {
+        const c = document.createElement("div");
+        c.className = "cell";
+        c.dataset.i = i; c.dataset.j = j;
+        c.title = `w[${i}][${j}]`;
+        c.addEventListener("mouseenter", () => setHover({kind: "cell", i, j}));
+        c.addEventListener("mouseleave", clearHover);
+        row.appendChild(c);
+      }
+      rows.appendChild(row);
+    }
+    grid.appendChild(rows);
+
+    capA.textContent = `${nIn} inputs  \u2192  ${nHid} neurons`;
+    capB.textContent = `W  \u2014  shape (${nHid}, ${nIn})`;
+    tally.innerHTML =
+      `${nIn} \u00D7 ${nHid} = <b>${(nIn * nHid).toLocaleString()}</b> weights`;
+
+    paint();
+  }
+
+  function sub(n) {
+    return String(n).split("").map(d => "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089"[+d]).join("");
+  }
+
+  function setHover(h) { hover = h; paint(); }
+  function clearHover() { hover = null; paint(); }
+
+  function paint() {
+    const lit = (i, j) => {
+      if (!hover) return false;
+      if (hover.kind === "neuron") return i === hover.i;
+      if (hover.kind === "input")  return j === hover.j;
+      return i === hover.i && j === hover.j;
+    };
+
+    svg.querySelectorAll(".edge").forEach(e => {
+      e.classList.toggle("lit", lit(+e.dataset.i, +e.dataset.j));
+    });
+    svg.querySelectorAll(".in-node").forEach(r => {
+      const j = +r.dataset.j;
+      r.classList.toggle("lit", !!hover && (hover.kind === "input" ? hover.j === j
+                                          : hover.kind === "cell"  ? hover.j === j
+                                          : true));
+    });
+    svg.querySelectorAll(".neuron").forEach(c => {
+      const i = +c.dataset.i;
+      c.classList.toggle("lit", !!hover && (hover.kind === "neuron" ? hover.i === i
+                                          : hover.kind === "cell"   ? hover.i === i
+                                          : true));
+    });
+
+    grid.querySelectorAll(".cell").forEach(c => {
+      const i = +c.dataset.i, j = +c.dataset.j;
+      c.classList.remove("lit", "rowlit", "collit");
+      if (!hover) return;
+      if (hover.kind === "cell" && i === hover.i && j === hover.j) c.classList.add("lit");
+      else if (hover.kind === "neuron" && i === hover.i) c.classList.add("rowlit");
+      else if (hover.kind === "input" && j === hover.j) c.classList.add("collit");
+      else if (hover.kind === "cell" && (i === hover.i || j === hover.j)) c.classList.add("rowlit");
+    });
+    grid.querySelectorAll(".rowlbl").forEach(l => {
+      l.classList.toggle("lit", !!hover && +l.dataset.row === hover.i);
+    });
+    grid.querySelectorAll(".hdr").forEach(h => {
+      h.classList.toggle("lit", !!hover && +h.dataset.col === hover.j);
+    });
+
+    if (!hover) {
+      readout.className = "readout idle";
+      readout.textContent = "Hover a neuron, an input coordinate, or a single weight.";
+    } else if (hover.kind === "neuron") {
+      readout.className = "readout";
+      readout.innerHTML =
+        `neuron <em>h${sub(hover.i)}</em> reads all ${nIn} inputs ` +
+        `\u2192 that is <em>row ${hover.i}</em> of W, ${nIn} weights: ` +
+        `h${sub(hover.i)} = \u03A3\u2C7C W[${hover.i}][j]\u00B7x[j]`;
+    } else if (hover.kind === "input") {
+      readout.className = "readout";
+      readout.innerHTML =
+        `input <em>x${sub(hover.j)}</em> is read by all ${nHid} neurons ` +
+        `\u2192 that is <em>column ${hover.j}</em> of W, ${nHid} weights \u2014 one per neuron`;
+    } else {
+      readout.className = "readout";
+      readout.innerHTML =
+        `<em>W[${hover.i}][${hover.j}]</em> \u2014 the single weight carrying ` +
+        `x${sub(hover.j)} into neuron h${sub(hover.i)}. One cell, one line.`;
+    }
+  }
+
+  inSlider.addEventListener("input", () => {
+    nIn = +inSlider.value; inVal.textContent = nIn; hover = null; build();
+  });
+  hidSlider.addEventListener("input", () => {
+    nHid = +hidSlider.value; hidVal.textContent = nHid; hover = null; build();
+  });
+
+  build();
+})();
+</script>

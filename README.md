@@ -635,9 +635,11 @@ Worth knowing before handing this to someone:
   order the notebooks teach. The pieces it calls are all tested.
 - Committed notebook outputs are a deliberate trade. The worksheets save their
   outputs so they can be read before being run, which is worth it for teaching
-  material and does make their diffs noisy. Re-running a worksheet will show
-  changes even where nothing meaningful moved, so read notebook diffs with that
-  in mind.
+  material and does make their diffs noisy. Re-running a worksheet shows changes
+  even where nothing meaningful moved, so read notebook diffs with that in mind.
+  The one exception is `replay.watch()`, whose output is never saved: it embeds
+  every frame as base64 PNG, and a test enforces a size budget so it cannot creep
+  back in.
 - `04_watch_agent` exists twice, as a worksheet and as a plain reference
   notebook. The code cells are copies rather than shared, so a change to one
   needs making in both. CI validates both but cannot tell you they have drifted.
