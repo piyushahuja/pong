@@ -186,6 +186,7 @@ pong-pytorch/
 │   ├── 02_neural_network.ipynb     torch.nn, tensor shapes, batch dims
 │   ├── 03_train_step.ipynb         probability → sample → log-prob → step
 │   ├── 04_watch_agent.ipynb        checkpoints, loading, replaying
+│   ├── 0N_*_worksheet.ipynb        the same four, as taught worksheets
 │   └── pong_exploration.ipynb      the original working notebook
 │
 ├── configs/                one TOML file per experiment
@@ -203,6 +204,26 @@ might need lives in the package and is imported; the scripts only parse
 arguments and call it. Nothing is ever defined twice.
 
 Notebooks 1–3 read without executing anything; the figures are explanatory.
+
+## Two flavours of each notebook
+
+Each of the four numbered notebooks has a `_worksheet` twin:
+
+| | Reference notebook | Worksheet |
+|---|---|---|
+| `01_setup` | the APIs, briefly | numbered sections, an environment you drive yourself, 4 exercises |
+| `02_neural_network` | the APIs, briefly | + parameter counts worked through, 6 exercises |
+| `03_train_step` | the APIs, briefly | + every number checked against the formula, 7 exercises |
+| `04_watch_agent` | the APIs, briefly | + the exploration tax measured, 6 exercises |
+
+The worksheets carry the same code — copied cell for cell, not retyped — plus **what you
+will learn** at the top, a markdown cell after each output explaining what to notice, and
+**exercises**, **questions to think about** and **what you have learnt** at the end. Their
+outputs are saved, so they can be read before they are run.
+
+Use the reference notebook when you want to look something up, and the worksheet when you
+are learning it or handing it to someone else. Because the code cells are copies, a change
+to one needs making in both; CI validates both, but it cannot tell you they have drifted.
 
 ## Checkpoints
 
@@ -297,7 +318,7 @@ uv run scripts/train.py --config baseline
 ```
 
 Settings come from three layers, each overriding the one before: the defaults
-in `pong.py`, then a TOML file in `configs/`, then command-line flags.
+in `scripts/train.py`, then a TOML file in `configs/`, then command-line flags.
 
 ```bash
 uv run scripts/train.py --gamma 0.95 --seed 3          # no config file needed
@@ -437,11 +458,14 @@ If `--mode human` cannot open a window, use `--mode rgb`, or open
 
 | Order | File | Why |
 |---|---|---|
-| 1 | `notebooks/01_setup.ipynb` | what the agent is and is not told |
-| 2 | `notebooks/02_neural_network.ipynb` | the network, and why it is only two layers |
-| 3 | `notebooks/03_train_step.ipynb` | how one update works |
-| 4 | `notebooks/04_watch_agent.ipynb` | what a checkpoint holds, and playing it back |
-| 5 | `scripts/train.py` | the real loop. It reads top to bottom, in the same order as the notebooks. |
+| 1 | `notebooks/01_setup_worksheet.ipynb` | what the agent is and is not told |
+| 2 | `notebooks/02_neural_network_worksheet.ipynb` | the network, and why it is only two layers |
+| 3 | `notebooks/03_train_step_worksheet.ipynb` | how one update works |
+| 4 | `notebooks/04_watch_agent_worksheet.ipynb` | what a checkpoint holds, and playing it back |
+| 5 | `scripts/train.py` | the real loop. It reads top to bottom, in the same order as the worksheets. |
+
+Do the exercises. The worksheets are the taught version; the unsuffixed notebooks are the
+same material without the scaffolding, for looking things up later.
 
 ### The loop you will repeat
 
